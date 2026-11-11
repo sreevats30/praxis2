@@ -24,6 +24,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
+import com.companion.yogawellness.feedback.CoachUtterance
+import com.companion.yogawellness.replay.DemoClips
+import java.io.File
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -69,6 +81,14 @@ fun PracticeScreen(onBack: () -> Unit, vm: PracticeViewModel = viewModel()) {
     var cameraError by remember { mutableStateOf<String?>(null) }
     var showExplain by rememberSaveable { mutableStateOf(false) }
     var showSafety by rememberSaveable { mutableStateOf(true) }
+    var showReplayPicker by remember { mutableStateOf(false) }
+
+    state.message?.let { msg ->
+        LaunchedEffect(msg) {
+            delay(2500)
+            vm.clearMessage()
+        }
+    }
 
     LifecycleStartEffect(vm) {
         vm.onStart()
@@ -80,20 +100,22 @@ fun PracticeScreen(onBack: () -> Unit, vm: PracticeViewModel = viewModel()) {
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        if (hasCamera) {
-            val analyzer = remember(vm) { ImageAnalysis.Analyzer { proxy -> vm.landmarker.detectLiveStream(proxy) } }
-            CameraPreview(
-                useFrontCamera = state.useFrontCamera,
-                analyzer = analyzer,
-                onCameraUnavailable = { cameraError = it },
-                modifier = Modifier.fillMaxSize()
-            )
-            PoseOverlay(state.output, mirror = state.useFrontCamera, modifier = Modifier.fillMaxSize())
-        } else {
-            CameraPermissionPrompt(Modifier.align(Alignment.Center)) {
-                permissionLauncher.launch(Manifest.permission.CAMERA)
+        if (!state.isReplaying) {
+            if (hasCamera) {
+                val analyzer = remember(vm) { ImageAnalysis.Analyzer { proxy -> vm.landmarker.detectLiveStream(proxy) } }
+                CameraPreview(
+                    useFrontCamera = state.useFrontCamera,
+                    analyzer = analyzer,
+                    onCameraUnavailable = { cameraError = it },
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                CameraPermissionPrompt(Modifier.align(Alignment.Center)) {
+                    permissionLauncher.launch(Manifest.permission.CAMERA)
+                }
             }
         }
+        PoseOverlay(state.output, mirror = state.useFrontCamera, modifier = Modifier.fillMaxSize())
 
         Column(
             Modifier
@@ -112,11 +134,31 @@ fun PracticeScreen(onBack: () -> Unit, vm: PracticeViewModel = viewModel()) {
                     modifier = Modifier.weight(1f).padding(start = 8.dp)
                 )
                 ScoreBadge(state.output)
+                OverlayIconButton(vm::toggleVoice) {
+                    Icon(
+                        if (state.voiceEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
+                        contentDescription = if (state.voiceEnabled) "Mute voice coach" else "Unmute voice coach"
+                    )
+                }
+                if (!state.isReplaying) {
+                    OverlayIconButton(vm::toggleRecording) {
+                        Icon(
+                            if (state.recordingSec != null) Icons.Default.Stop else Icons.Default.FiberManualRecord,
+                            contentDescription = if (state.recordingSec != null) "Stop recording" else "Record 20 s pose clip",
+                            tint = if (state.recordingSec != null) Color.White else ScoreColors.Red
+                        )
+                    }
+                }
+                OverlayIconButton({ showReplayPicker = true }) { Icon(Icons.Default.Replay, contentDescription = "Replay a clip") }
                 OverlayIconButton(vm::toggleCamera) { Icon(Icons.Default.Cameraswitch, contentDescription = "Switch camera") }
             }
             if (showSafety) SafetyBanner { showSafety = false }
+            state.replayName?.let { ReplayBanner(it, vm::stopReplay) }
+            state.recordingSec?.let { InfoPill(String.format(Locale.US, "● Recording landmarks %.0f / 20 s", it)) }
+            state.output?.safety?.let { SafetyAlertBanner(it.message) }
             state.output?.preflight?.let { if (!state.output!!.scoringArmed) PreflightPill(it) }
             (cameraError ?: state.error)?.let { ErrorPill(it) }
+            state.message?.let { InfoPill(it) }
         }
 
         BottomPanel(
@@ -132,6 +174,60 @@ fun PracticeScreen(onBack: () -> Unit, vm: PracticeViewModel = viewModel()) {
 
     if (showExplain) {
         ExplainScoreSheet(state.output, state.profile) { showExplain = false }
+    }
+    if (showReplayPicker) {
+        ReplayPickerDialog(
+            clips = remember { vm.listClips() },
+            onDemo = { showReplayPicker = false; vm.startDemoReplay() },
+            onClip = { showReplayPicker = false; vm.startReplay(it) },
+            onDismiss = { showReplayPicker = false }
+        )
+    }
+}
+
+@Composable
+private fun ReplayPickerDialog(clips: List<File>, onDemo: () -> Unit, onClip: (File) -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Replay a pose clip") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    "Clips are replayed through the same scoring pipeline as the live camera.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                TextButton(onClick = onDemo) { Text(DemoClips.WARRIOR_CORRECTION_NAME) }
+                if (clips.isEmpty()) {
+                    Text("No recorded clips yet — use ⏺ to record 20 s.", style = MaterialTheme.typography.bodySmall)
+                }
+                clips.take(8).forEach { f -> TextButton(onClick = { onClip(f) }) { Text(f.nameWithoutExtension) } }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } }
+    )
+}
+
+@Composable
+private fun ReplayBanner(name: String, onStop: () -> Unit) {
+    Surface(color = Color(0xE60F5257), shape = RoundedCornerShape(12.dp)) {
+        Row(Modifier.padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Replaying: $name", color = Color.White, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+            TextButton(onClick = onStop) { Text("Stop", color = Color.White) }
+        }
+    }
+}
+
+@Composable
+private fun SafetyAlertBanner(message: String) {
+    Surface(color = ScoreColors.Red.copy(alpha = 0.95f), shape = RoundedCornerShape(12.dp)) {
+        Text("⚠ $message", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.padding(12.dp))
+    }
+}
+
+@Composable
+private fun InfoPill(text: String) {
+    Surface(color = Color.Black.copy(alpha = 0.6f), shape = RoundedCornerShape(12.dp)) {
+        Text(text, color = Color.White, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
     }
 }
 
@@ -243,11 +339,21 @@ internal fun BottomPanel(state: PracticeUiState, onExplain: () -> Unit, modifier
                 }
                 else -> ScoredPoseInfo(out)
             }
+            state.caption?.let { CoachCaption(it) }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilledTonalButton(onClick = onExplain) { Text("∑ Explain Score") }
             }
         }
     }
+}
+
+@Composable
+private fun CoachCaption(u: CoachUtterance) {
+    Text(
+        "🔊 " + u.text,
+        color = if (u.kind == CoachUtterance.Kind.SAFETY) ScoreColors.Red else Color.White.copy(alpha = 0.8f),
+        style = MaterialTheme.typography.bodySmall
+    )
 }
 
 @Composable
@@ -258,7 +364,9 @@ private fun ScoredPoseInfo(out: PipelineOutput) {
         PanelText(label.asana.cameraAngle.instruction, small = true)
     }
     val cue = out.alignment?.primaryCorrectiveCue
-    if (cue != null) {
+    if (out.safety != null) {
+        Text(out.safety.message, color = ScoreColors.Red, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+    } else if (cue != null) {
         Text(cue, color = ScoreColors.Amber, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
     } else if (out.score != null) {
         Text("Beautiful — hold it there", color = ScoreColors.Green, style = MaterialTheme.typography.titleMedium)

@@ -18,11 +18,16 @@ class AppPreferences(context: Context) {
         get() = sp.getBoolean(KEY_FRONT_CAMERA, true)
         set(value) = sp.edit { putBoolean(KEY_FRONT_CAMERA, value) }
 
+    var voiceCoachEnabled: Boolean
+        get() = sp.getBoolean(KEY_VOICE, true)
+        set(value) = sp.edit { putBoolean(KEY_VOICE, value) }
+
     fun clearAll() = sp.edit { clear() }
 
     companion object {
         const val FILE = "yoga_wellness_prefs"
         private const val KEY_PROFILE = "tolerance_profile"
         private const val KEY_FRONT_CAMERA = "front_camera"
+        private const val KEY_VOICE = "voice_coach"
     }
 }

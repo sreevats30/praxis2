@@ -111,6 +111,40 @@ class ScreenRenderTest {
     }
 
     @Test
+    fun practiceTreeKneeSafetyAlert() {
+        val b = SyntheticPoseBuilder()
+        val p = PosePipeline()
+        var t = 0L
+        var out: PipelineOutput? = null
+        repeat(40) {
+            t += 40
+            out = p.process(
+                b.front(
+                    t, left = SyntheticPoseBuilder.Leg(40.0, 64.3), right = SyntheticPoseBuilder.Leg(2.0, 178.0),
+                    leftArm = SyntheticPoseBuilder.Arm(170.0, 168.0), rightArm = SyntheticPoseBuilder.Arm(170.0, 168.0)
+                ),
+                null
+            )
+        }
+        val caption = com.companion.yogawellness.feedback.CoachUtterance(
+            com.companion.yogawellness.feedback.SafetyGuards.TREE_KNEE_MESSAGE,
+            com.companion.yogawellness.feedback.CoachUtterance.Kind.SAFETY
+        )
+        setScreen {
+            Box(Modifier.fillMaxSize().background(Color(0xFF30363A))) {
+                PoseOverlay(out, mirror = true, modifier = Modifier.fillMaxSize())
+                BottomPanel(
+                    PracticeUiState(output = out, modelReady = true, caption = caption),
+                    onExplain = {},
+                    modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(10.dp)
+                )
+            }
+        }
+        compose.onNodeWithText(com.companion.yogawellness.feedback.SafetyGuards.TREE_KNEE_MESSAGE).assertExists()
+        save("practice_tree_knee_guard")
+    }
+
+    @Test
     fun explainScoreSheetContent() {
         val out = warriorOutput(125.0)
         setScreen { Surface { ExplainScoreContent(out, ToleranceProfile.STANDARD) } }

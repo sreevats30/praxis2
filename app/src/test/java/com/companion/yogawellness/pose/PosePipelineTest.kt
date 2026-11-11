@@ -84,6 +84,25 @@ class PosePipelineTest {
     }
 
     @Test
+    fun safetyViolationPausesHoldTimer() {
+        val p = PosePipeline()
+        var out: PipelineOutput? = null
+        repeat(150) {
+            out = p.process(
+                b.front(
+                    it * 40L, left = SyntheticPoseBuilder.Leg(40.0, 64.3), right = SyntheticPoseBuilder.Leg(2.0, 178.0),
+                    leftArm = SyntheticPoseBuilder.Arm(170.0, 168.0), rightArm = SyntheticPoseBuilder.Arm(170.0, 168.0)
+                ),
+                sensors
+            )
+        }
+        assertEquals("tree_knee", out!!.safety?.id)
+        assertTrue(out!!.score!! >= 75.0)           // alignment itself looks fine…
+        assertEquals(0.0, out!!.hold.bestGraceSec, 0.0) // …but no hold time is credited
+        assertEquals(HoldPhase.ALIGNING, out!!.hold.phase)
+    }
+
+    @Test
     fun personLeavingFrameUnlocks() {
         val p = PosePipeline()
         var out: PipelineOutput? = null

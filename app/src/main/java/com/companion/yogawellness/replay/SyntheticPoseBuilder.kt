@@ -194,7 +194,8 @@ class SyntheticPoseBuilder(
     fun tadasana(ts: Long, dx: Double = 0.0) = front(ts, dx = dx)
 
     fun warriorII(ts: Long, frontSide: BodySide = BodySide.LEFT, frontKneeDeg: Double = 95.0, dx: Double = 0.0): PoseFrame {
-        val frontLeg = Leg(70.0, frontKneeDeg)
+        // Thigh angle chosen so the front shin is vertical (knee stacked over ankle).
+        val frontLeg = Leg((180.0 - frontKneeDeg).coerceIn(30.0, 88.0), frontKneeDeg)
         val backLeg = Leg(45.0, 178.0)
         return front(
             ts,

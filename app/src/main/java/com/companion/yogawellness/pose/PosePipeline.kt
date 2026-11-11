@@ -5,6 +5,8 @@ import com.companion.yogawellness.classifier.ClassificationResult
 import com.companion.yogawellness.classifier.LockState
 import com.companion.yogawellness.classifier.RuleAndCentroidClassifier
 import com.companion.yogawellness.classifier.TemporalLock
+import com.companion.yogawellness.feedback.SafetyAlert
+import com.companion.yogawellness.feedback.SafetyGuards
 import com.companion.yogawellness.scoring.AlignmentScoreResult
 import com.companion.yogawellness.scoring.AlignmentScorer
 import com.companion.yogawellness.scoring.Asana
@@ -48,7 +50,9 @@ data class PipelineOutput(
     val hold: HoldStatus,
     val intraSymmetry: Double?,
     val calibration: CalibrationState,
-    val events: List<PipelineEvent>
+    val events: List<PipelineEvent>,
+    /** Physical safety rule currently violated (§4), checked before any alignment cue. */
+    val safety: SafetyAlert? = null
 ) {
     val lockedLabel: AsanaLabel? get() = lock?.locked
     val score: Double? get() = alignment?.finalScore
@@ -182,6 +186,7 @@ class PosePipeline(var toleranceProfile: ToleranceProfile = ToleranceProfile.STA
         var visibility: Map<String, Boolean> = emptyMap()
         var swayResult: SwayResult? = null
         var intraSym: Double? = null
+        var safety: SafetyAlert? = null
 
         if (label != null && label.asana.isScored && frame.hasPose) {
             val specs = AsanaSpecs.specsFor(label.asana)
@@ -191,13 +196,16 @@ class PosePipeline(var toleranceProfile: ToleranceProfile = ToleranceProfile.STA
             visibility = extraction.visibilityOk
             alignment = AlignmentScorer.evaluate(smoothed, visibility, specs, toleranceProfile.multiplier)
             intraSym = SymmetryCalculator.intraPose(label.asana, smoothed, visibility)
+            safety = SafetyGuards.evaluate(label, frame, smoothed)
 
             val g = PoseGeometry(frame, 0.0)
             val hip = g.midHip
             swayResult = sway.update(t, hip.x, hip.y, torsoRef)
         }
 
-        val holdStatus = if (label != null && label.asana.isScored) hold.update(t, alignment?.finalScore) else HoldStatus.IDLE
+        // A violated safety rule pauses the hold timer (and praise), however good the alignment is.
+        val holdScore = if (safety != null) 0.0 else alignment?.finalScore
+        val holdStatus = if (label != null && label.asana.isScored) hold.update(t, holdScore) else HoldStatus.IDLE
         if (label != null) {
             if (holdStatus.praiseTriggered) events += PipelineEvent.Praise(label)
             if (holdStatus.capReached) events += PipelineEvent.HoldCapReached(label, label.asana.maxHoldSec ?: 0)
@@ -206,7 +214,7 @@ class PosePipeline(var toleranceProfile: ToleranceProfile = ToleranceProfile.STA
 
         return PipelineOutput(
             frame, preflight, true, classification, lockState, alignment, smoothed, visibility,
-            swayResult, holdStatus, intraSym, calibrator.state(t), events
+            swayResult, holdStatus, intraSym, calibrator.state(t), events, safety
         )
     }
 
