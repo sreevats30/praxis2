@@ -53,7 +53,10 @@ data class SideComparison(
     val scoreDifference: Double?
 )
 
-/** Collects per-(asana, side) statistics over a session for the summary and inter-pose symmetry. */
+/**
+ * Collects per-(asana, side) statistics over a session for the summary and inter-pose symmetry.
+ * Thread-safe: the pipeline thread updates it while the UI may snapshot it to save the session.
+ */
 class SessionTracker {
     private class Acc {
         var lockedSec = 0.0
@@ -68,11 +71,13 @@ class SessionTracker {
     private val acc = LinkedHashMap<AsanaLabel, Acc>()
     private var tPrev = Double.NaN
 
+    @Synchronized
     fun reset() {
         acc.clear()
         tPrev = Double.NaN
     }
 
+    @Synchronized
     fun update(tSec: Double, label: AsanaLabel?, score: Double?, stability: Double?, hold: HoldStatus) {
         val dt = if (tPrev.isNaN()) 0.0 else (tSec - tPrev).coerceIn(0.0, 0.5)
         tPrev = tSec
@@ -91,6 +96,7 @@ class SessionTracker {
         a.bestGrace = max(a.bestGrace, hold.bestGraceSec)
     }
 
+    @Synchronized
     fun segments(): List<PoseSegmentStats> = acc.map { (label, a) ->
         PoseSegmentStats(
             label = label,

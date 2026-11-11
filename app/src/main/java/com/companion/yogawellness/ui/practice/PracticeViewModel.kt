@@ -3,6 +3,7 @@ package com.companion.yogawellness.ui.practice
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.companion.yogawellness.YogaWellnessApp
 import com.companion.yogawellness.camera.AccelerometerMonitor
 import com.companion.yogawellness.camera.PoseLandmarkerHelper
 import com.companion.yogawellness.data.AppPreferences
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.time.LocalDate
 
 data class PracticeUiState(
     val output: PipelineOutput? = null,
@@ -51,11 +53,14 @@ data class PracticeUiState(
  */
 class PracticeViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val prefs = AppPreferences(app)
+    private val container = app as YogaWellnessApp
+    private val prefs: AppPreferences = container.preferences
     private val pipeline = PosePipeline(prefs.toleranceProfile)
     private val accelerometer = AccelerometerMonitor(app)
     private val coach = OfflineTtsCoach(app).apply { enabled = prefs.voiceCoachEnabled }
-    val recorder = LandmarkRecorder(recordingsDir(app))
+    val recorder = LandmarkRecorder(container.recordingsDir)
+    @Volatile
+    private var sessionStartMs = System.currentTimeMillis()
     private val frames = Channel<PoseFrame>(Channel.CONFLATED)
     private var lastFrameMs = -1L
     private var replayJob: Job? = null
@@ -122,7 +127,19 @@ class PracticeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Persists the live session so far (if long enough) to the on-device database. */
+    private fun saveSession() {
+        val segments = pipeline.session.segments()
+        val start = sessionStartMs
+        val end = System.currentTimeMillis()
+        val profile = pipeline.toleranceProfile.name
+        container.appScope.launch {
+            container.repository.saveSession(segments, start, end, LocalDate.now().toEpochDay(), profile)
+        }
+    }
+
     private fun resetPipeline() {
+        sessionStartMs = System.currentTimeMillis()
         pipeline.reset()
         coach.reset()
         lastFrameMs = -1L
@@ -135,7 +152,10 @@ class PracticeViewModel(app: Application) : AndroidViewModel(app) {
         val front = !_state.value.useFrontCamera
         prefs.useFrontCamera = front
         _state.update { it.copy(useFrontCamera = front, output = null) }
-        viewModelScope.launch(pipelineDispatcher) { resetPipeline() }
+        viewModelScope.launch(pipelineDispatcher) {
+            saveSession()
+            resetPipeline()
+        }
     }
 
     fun toggleVoice() {
@@ -175,6 +195,7 @@ class PracticeViewModel(app: Application) : AndroidViewModel(app) {
                 return@launch
             }
             if (recorder.isRecording) recorder.stop()
+            saveSession() // keep the live practice done so far; replays are never saved
             resetPipeline()
             _state.update { it.copy(replayName = clip.name, output = null, recordingSec = null) }
             try {
@@ -192,17 +213,12 @@ class PracticeViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     override fun onCleared() {
+        if (!_state.value.isReplaying) saveSession()
         replayJob?.cancel()
         frames.close()
         recorder.stop()
         landmarker.close()
         accelerometer.stop()
         coach.shutdown()
-    }
-
-    companion object {
-        /** App-specific external storage: private to the app, but reachable with adb pull for tuning. */
-        fun recordingsDir(app: Application): File =
-            File(app.getExternalFilesDir(null) ?: app.filesDir, "recordings")
     }
 }

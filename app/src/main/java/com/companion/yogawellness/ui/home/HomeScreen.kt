@@ -38,7 +38,7 @@ import com.companion.yogawellness.scoring.ToleranceProfile
 fun HomeScreen(onStartPractice: () -> Unit, extraContent: @Composable () -> Unit = {}) {
     val context = LocalContext.current
     val prefs = remember { AppPreferences(context) }
-    var profile by remember { mutableStateOf(prefs.toleranceProfile) }
+    var profile by remember(prefs.toleranceProfile) { mutableStateOf(prefs.toleranceProfile) }
 
     Scaffold { padding ->
         Column(

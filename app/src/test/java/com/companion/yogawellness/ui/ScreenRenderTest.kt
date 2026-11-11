@@ -13,7 +13,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import com.companion.yogawellness.pose.BodySide
 import com.companion.yogawellness.pose.GravityAligner
@@ -150,6 +155,54 @@ class ScreenRenderTest {
         setScreen { Surface { ExplainScoreContent(out, ToleranceProfile.STANDARD) } }
         compose.onNodeWithText("Final score S = 41.4%  (capped by a critical joint)").assertExists()
         save("explain_score_warrior_125")
+    }
+
+    @Test
+    fun consentScreenRequiresAllThreeBoxes() {
+        var accepted = false
+        setScreen { com.companion.yogawellness.ui.consent.ConsentAndSafetyScreen(onAccepted = { accepted = true }) }
+        compose.onNodeWithText(com.companion.yogawellness.ui.consent.NON_DIAGNOSTIC_STATEMENT).assertExists()
+        compose.onNodeWithText("Agree and continue").assertIsNotEnabled()
+        save("consent")
+        listOf(
+            "I understand this app does not diagnose or treat any condition.",
+            "I agree to on-device camera processing and to storing my data only on this device.",
+            "I will practise safely and stop if anything hurts."
+        ).forEach { compose.onNodeWithText(it).performScrollTo().performClick() }
+        compose.onNodeWithText("Agree and continue").performScrollTo().assertIsEnabled().performClick()
+        org.junit.Assert.assertTrue(accepted)
+    }
+
+    @Test
+    fun checkInScreen() {
+        setScreen { com.companion.yogawellness.ui.wellness.CheckInScreen(onDone = {}) }
+        compose.onNodeWithText("Stress").assertExists()
+        save("checkin")
+    }
+
+    @Test
+    fun phq9ItemNineOpensCrisisSupportImmediately() {
+        setScreen { com.companion.yogawellness.ui.wellness.QuestionnaireScreen(com.companion.yogawellness.wellness.QuestionnaireType.PHQ9, onDone = {}) }
+        save("phq9")
+        // "Several days" on item 9 (the 9th "Several days" option on the screen)
+        compose.onAllNodesWithText("Several days")[8].performScrollTo().performClick()
+        compose.onNodeWithText("You don't have to go through this alone").assertExists()
+        compose.onNodeWithText("  Call Tele-MANAS 14416", substring = true).assertExists()
+        save("phq9_crisis_sheet")
+    }
+
+    @Test
+    fun crisisSupportContent() {
+        setScreen { Surface { com.companion.yogawellness.ui.wellness.CrisisSupportContent(onDismiss = {}) } }
+        compose.onNodeWithText("Emergency services 112", substring = true).assertExists()
+        save("crisis_support")
+    }
+
+    @Test
+    fun settingsScreen() {
+        setScreen { com.companion.yogawellness.ui.settings.SettingsScreen(onBack = {}, onDataDeleted = {}) }
+        compose.onAllNodesWithText("Delete All My Data")[0].assertExists()
+        save("settings")
     }
 
     @Test
