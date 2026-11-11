@@ -9,6 +9,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.companion.yogawellness.YogaWellnessApp
 import com.companion.yogawellness.ui.consent.ConsentAndSafetyScreen
+import com.companion.yogawellness.ui.dashboard.WellnessDashboardScreen
 import com.companion.yogawellness.ui.home.HomeScreen
 import com.companion.yogawellness.ui.home.WellnessCards
 import com.companion.yogawellness.ui.practice.PracticeScreen
@@ -25,6 +26,7 @@ object Routes {
     const val CHECK_IN = "checkin"
     const val QUESTIONNAIRE = "questionnaire/{type}"
     const val SETTINGS = "settings"
+    const val DASHBOARD = "dashboard"
 
     fun questionnaire(type: QuestionnaireType) = "questionnaire/${type.name}"
 }
@@ -51,7 +53,8 @@ fun AppNavHost(nav: NavHostController = rememberNavController()) {
                         vm,
                         onCheckIn = { nav.navigate(Routes.CHECK_IN) },
                         onQuestionnaire = { nav.navigate(Routes.questionnaire(it)) },
-                        onSettings = { nav.navigate(Routes.SETTINGS) }
+                        onSettings = { nav.navigate(Routes.SETTINGS) },
+                        onDashboard = { nav.navigate(Routes.DASHBOARD) }
                     )
                 }
             )
@@ -62,6 +65,7 @@ fun AppNavHost(nav: NavHostController = rememberNavController()) {
             val type = QuestionnaireType.valueOf(entry.arguments?.getString("type") ?: QuestionnaireType.PHQ9.name)
             QuestionnaireScreen(type, onDone = { nav.popBackStack() })
         }
+        composable(Routes.DASHBOARD) { WellnessDashboardScreen(onBack = { nav.popBackStack() }) }
         composable(Routes.SETTINGS) {
             SettingsScreen(
                 onBack = { nav.popBackStack() },

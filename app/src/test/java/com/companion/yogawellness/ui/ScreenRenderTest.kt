@@ -2,6 +2,7 @@ package com.companion.yogawellness.ui
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.background
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -203,6 +204,22 @@ class ScreenRenderTest {
         setScreen { com.companion.yogawellness.ui.settings.SettingsScreen(onBack = {}, onDataDeleted = {}) }
         compose.onAllNodesWithText("Delete All My Data")[0].assertExists()
         save("settings")
+    }
+
+    @Test
+    fun dashboardWithPersonaA() {
+        val data = com.companion.yogawellness.wellness.DashboardBuilderTest().personaDashboard(com.companion.yogawellness.wellness.Persona.A_CONSISTENT)
+        setScreen {
+            Surface {
+                androidx.compose.foundation.layout.Column(
+                    Modifier.padding(16.dp).verticalScroll(androidx.compose.foundation.rememberScrollState()),
+                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(14.dp)
+                ) { com.companion.yogawellness.ui.dashboard.DashboardContent(data, onExport = {}) }
+            }
+        }
+        compose.onNodeWithText("Weekly trend").assertExists()
+        compose.onNodeWithText("Practice & stress").assertExists()
+        save("dashboard_persona_a")
     }
 
     @Test

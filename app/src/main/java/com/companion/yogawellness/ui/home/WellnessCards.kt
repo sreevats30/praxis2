@@ -27,6 +27,7 @@ fun WellnessCards(
     onCheckIn: () -> Unit,
     onQuestionnaire: (QuestionnaireType) -> Unit,
     onSettings: () -> Unit,
+    onDashboard: () -> Unit = {},
     extra: @Composable () -> Unit = {}
 ) {
     val today by vm.todayCheckIn.collectAsStateWithLifecycle()
@@ -64,6 +65,17 @@ fun WellnessCards(
                     OutlinedButton(onClick = { onQuestionnaire(type) }, modifier = Modifier.fillMaxWidth()) { Text("Start ${type.shortName}") }
                 }
             }
+        }
+    }
+
+    Card {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Wellness dashboard", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Weekly trends, left-vs-right balance, honest statistics and a 1-page PDF report.",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Button(onClick = onDashboard, modifier = Modifier.fillMaxWidth()) { Text("Open dashboard") }
         }
     }
 
