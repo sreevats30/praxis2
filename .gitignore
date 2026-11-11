@@ -1,0 +1,15 @@
+# Gradle / Android Studio
+.gradle/
+build/
+/local.properties
+.idea/
+*.iml
+.DS_Store
+/captures
+.externalNativeBuild/
+.cxx/
+.kotlin/
+
+# MediaPipe model is downloaded at build time (see app/build.gradle.kts)
+app/src/main/assets/pose_landmarker_full.task
+app/src/main/assets/*.part
