@@ -112,23 +112,6 @@ class WellnessRepository(
     /** Deletes one of the user's own sessions (pose rows cascade). A demo session id is a no-op. */
     suspend fun deleteSession(sessionId: Long) = db.sessions().deleteSession(sessionId, ProfileIds.MY_ACCOUNT)
 
-    /**
-     * Logs practice done without the camera: minutes only, **no** pose rows and **no** score, so
-     * alignment analytics are never polluted with invented numbers. Always My Account.
-     */
-    suspend fun logManualSession(minutes: Int, toleranceProfile: String = prefs.toleranceProfile.name): Long {
-        require(minutes in MANUAL_MINUTES_RANGE) { "minutes must be in $MANUAL_MINUTES_RANGE" }
-        val now = clock()
-        val day = Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()).toLocalDate().toEpochDay()
-        return db.sessions().insertSession(
-            PracticeSessionEntity(
-                epochDay = day, startedAtMs = now, endedAtMs = now, activeSec = minutes * 60.0,
-                meanScore = null, profile = toleranceProfile, profileId = ProfileIds.MY_ACCOUNT,
-                source = PracticeSessionEntity.SOURCE_MANUAL
-            )
-        )
-    }
-
     // ---- Questionnaires -----------------------------------------------------------------------
     fun observeLatest(type: QuestionnaireType, profileId: String): Flow<QuestionnaireEntity?> =
         db.questionnaires().observeLatest(type.name, profileId)
@@ -178,10 +161,6 @@ class WellnessRepository(
                 db.questionnaires().clearDemoQuestionnaires(pid)
             }
         }
-    }
-
-    companion object {
-        val MANUAL_MINUTES_RANGE = 1..180
     }
 
     /**

@@ -19,12 +19,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Accessibility
 import androidx.compose.material.icons.rounded.CloudDone
 import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.EditNote
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -34,7 +32,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -110,7 +107,6 @@ fun SessionHistoryScreen(
         state = state,
         onStartPractice = onStartPractice,
         onDelete = vm::deleteSession,
-        onLogManual = vm::logManual,
         header = {
             ProfileSelectorBar()
             DemoBannerBar()
@@ -123,11 +119,9 @@ fun SessionHistoryContent(
     state: HistoryUiState,
     onStartPractice: () -> Unit,
     onDelete: (Long) -> Unit,
-    onLogManual: (Int) -> Unit,
     header: @Composable () -> Unit = {}
 ) {
     var confirmDelete by remember { mutableStateOf<PracticeSessionEntity?>(null) }
-    var showManual by remember { mutableStateOf(false) }
     val expanded = remember { mutableStateListOf<Long>() }
 
     Scaffold(
@@ -157,15 +151,10 @@ fun SessionHistoryContent(
             }
             if (!state.loading && state.sessions.isEmpty()) {
                 item(key = "empty") {
-                    EmptyHistory(onStartPractice, if (state.canEdit) ({ showManual = true }) else null)
+                    EmptyHistory(onStartPractice)
                 }
             } else if (state.sessions.isNotEmpty()) {
                 item(key = "summary") { SummaryCard(state.summary) }
-                if (state.canEdit) {
-                    item(key = "manual") {
-                        SoftButton("Log manual practice", { showManual = true }, Modifier.fillMaxWidth(), icon = Icons.Rounded.EditNote)
-                    }
-                }
                 item(key = "sessionsHeader") {
                     Text(
                         "SESSIONS",
@@ -199,13 +188,10 @@ fun SessionHistoryContent(
             dismissButton = { TextButton(onClick = { confirmDelete = null }) { Text("Cancel") } }
         )
     }
-    if (showManual) {
-        ManualPracticeDialog(onDismiss = { showManual = false }, onSave = { showManual = false; onLogManual(it) })
-    }
 }
 
 @Composable
-private fun EmptyHistory(onStartPractice: () -> Unit, onLogManual: (() -> Unit)?) {
+private fun EmptyHistory(onStartPractice: () -> Unit) {
     PanelCard(spacing = 14.dp) {
         Box(
             Modifier
@@ -228,9 +214,6 @@ private fun EmptyHistory(onStartPractice: () -> Unit, onLogManual: (() -> Unit)?
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         GradientButton("Start practice", onStartPractice, Modifier.fillMaxWidth(), icon = Icons.Rounded.PlayArrow)
-        if (onLogManual != null) {
-            SoftButton("Log manual practice", onLogManual, Modifier.fillMaxWidth(), icon = Icons.Rounded.EditNote)
-        }
     }
 }
 
@@ -418,33 +401,4 @@ fun coachingLine(p: PoseRecordEntity): String? = when {
     p.worstJoint != null -> "Worst joint: ${p.worstJoint}"
     p.topCue != null -> "Most frequent cue: \"${p.topCue}\""
     else -> null
-}
-
-@Composable
-private fun ManualPracticeDialog(onDismiss: () -> Unit, onSave: (Int) -> Unit) {
-    var text by remember { mutableStateOf("") }
-    val minutes = text.toIntOrNull()
-    val valid = minutes != null && minutes in WellnessRepository.MANUAL_MINUTES_RANGE
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Rounded.EditNote, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-        title = { Text("Log manual practice") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("For practice done without the camera. Only the minutes are saved — no score.", style = MaterialTheme.typography.bodySmall)
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = { v -> text = v.filter { it.isDigit() }.take(3) },
-                    label = { Text("Minutes (1–180)") },
-                    singleLine = true,
-                    isError = text.isNotEmpty() && !valid,
-                    supportingText = if (text.isNotEmpty() && !valid) ({ Text("Enter 1 to 180 minutes") }) else null,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    shape = RoundedCornerShape(14.dp)
-                )
-            }
-        },
-        confirmButton = { TextButton(onClick = { minutes?.let(onSave) }, enabled = valid) { Text("Save") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
-    )
 }

@@ -333,7 +333,7 @@ class ScreenRenderTest {
     fun historyEmpty() {
         setScreen {
             com.companion.yogawellness.ui.history.SessionHistoryContent(
-                com.companion.yogawellness.ui.history.HistoryUiState(loading = false), onStartPractice = {}, onDelete = {}, onLogManual = {}
+                com.companion.yogawellness.ui.history.HistoryUiState(loading = false), onStartPractice = {}, onDelete = {}
             )
         }
         compose.onNodeWithText("No sessions yet. Start a practice — every pose you hold for 2 seconds is saved here.").assertExists()
@@ -343,7 +343,7 @@ class ScreenRenderTest {
 
     @Test
     fun historyPopulatedAndExpanded() {
-        setScreen { com.companion.yogawellness.ui.history.SessionHistoryContent(historyState(), onStartPractice = {}, onDelete = {}, onLogManual = {}) }
+        setScreen { com.companion.yogawellness.ui.history.SessionHistoryContent(historyState(), onStartPractice = {}, onDelete = {}) }
         compose.onNodeWithText("72% align").assertExists()
         compose.onNodeWithText("Manual").assertExists()
         compose.onAllNodesWithText("Collapsed", substring = true, useUnmergedTree = true)
@@ -359,7 +359,7 @@ class ScreenRenderTest {
     fun historyDemoProfileIsReadOnly() {
         setScreen {
             com.companion.yogawellness.ui.history.SessionHistoryContent(
-                historyState(com.companion.yogawellness.data.ProfileIds.PERSONA_B), onStartPractice = {}, onDelete = {}, onLogManual = {},
+                historyState(com.companion.yogawellness.data.ProfileIds.PERSONA_B), onStartPractice = {}, onDelete = {},
                 header = {
                     com.companion.yogawellness.ui.profile.DemoBanner(com.companion.yogawellness.data.ProfileIds.PERSONA_B, onBackToMyAccount = {})
                 }
@@ -378,7 +378,7 @@ class ScreenRenderTest {
             androidx.compose.runtime.CompositionLocalProvider(
                 androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(d.density, fontScale = 2f)
             ) {
-                com.companion.yogawellness.ui.history.SessionHistoryContent(historyState(), onStartPractice = {}, onDelete = {}, onLogManual = {})
+                com.companion.yogawellness.ui.history.SessionHistoryContent(historyState(), onStartPractice = {}, onDelete = {})
             }
         }
         compose.onAllNodesWithText("3m 20s")[0].performClick()

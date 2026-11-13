@@ -26,7 +26,7 @@ data class HistoryUiState(
     val summary: HistorySummary = HistorySummary(0, 0.0, null, null),
     val loading: Boolean = true
 ) {
-    /** Demo datasets are read-only: no delete, no manual logging. */
+    /** Demo datasets are read-only: no delete. */
     val canEdit: Boolean get() = profileId == ProfileIds.MY_ACCOUNT
 }
 
@@ -49,14 +49,6 @@ class HistoryViewModel(
     fun deleteSession(sessionId: Long) {
         if (activeProfile.id.value != ProfileIds.MY_ACCOUNT) return
         viewModelScope.launch { repo.deleteSession(sessionId) }
-    }
-
-    fun logManual(minutes: Int) {
-        if (minutes !in WellnessRepository.MANUAL_MINUTES_RANGE) return
-        viewModelScope.launch {
-            repo.logManualSession(minutes)
-            activeProfile.returnToMyAccount()
-        }
     }
 
     companion object {

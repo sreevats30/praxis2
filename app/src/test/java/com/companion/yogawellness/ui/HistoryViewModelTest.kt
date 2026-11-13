@@ -121,15 +121,4 @@ class HistoryViewModelTest {
             assertEquals(before.sessions.first().poses.size, db.sessions().posesFor(demoId).size)
         }
     }
-
-    @Test
-    fun manualLoggingGoesToMyAccount() {
-        active.select(ProfileIds.PERSONA_C)
-        vm.logManual(25)
-        val mine = awaitState { it.profileId == ProfileIds.MY_ACCOUNT && it.sessions.isNotEmpty() }
-        assertEquals("MANUAL", mine.sessions.single().session.source)
-        vm.logManual(0) // out of range: ignored
-        vm.logManual(181)
-        runBlocking { assertEquals(1, db.sessions().count(ProfileIds.MY_ACCOUNT)) }
-    }
 }
