@@ -210,7 +210,7 @@ class PosePipeline(var toleranceProfile: ToleranceProfile = ToleranceProfile.STA
             if (holdStatus.praiseTriggered) events += PipelineEvent.Praise(label)
             if (holdStatus.capReached) events += PipelineEvent.HoldCapReached(label, label.asana.maxHoldSec ?: 0)
         }
-        session.update(t, label, alignment?.finalScore, swayResult?.stability, holdStatus)
+        session.update(t, label, alignment?.finalScore, swayResult?.stability, holdStatus, alignment)
 
         return PipelineOutput(
             frame, preflight, true, classification, lockState, alignment, smoothed, visibility,

@@ -20,8 +20,10 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.DeleteForever
+import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Memory
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Science
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.TextFields
@@ -46,8 +48,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.companion.yogawellness.BuildConfig
+import com.companion.yogawellness.data.ProfileIds
 import com.companion.yogawellness.ui.components.ClinicalTopBar
 import com.companion.yogawellness.ui.components.FeatureRow
 import com.companion.yogawellness.ui.components.GlassPill
@@ -57,6 +61,7 @@ import com.companion.yogawellness.ui.components.Overline
 import com.companion.yogawellness.ui.components.PanelCard
 import com.companion.yogawellness.ui.components.Pill
 import com.companion.yogawellness.ui.components.Reveal
+import com.companion.yogawellness.ui.components.SoftButton
 import com.companion.yogawellness.ui.consent.NON_DIAGNOSTIC_STATEMENT
 import com.companion.yogawellness.ui.theme.AppTheme
 import com.companion.yogawellness.ui.theme.Brand
@@ -67,7 +72,8 @@ import com.companion.yogawellness.wellness.Persona
 fun SettingsScreen(onBack: () -> Unit, onDataDeleted: () -> Unit, vm: WellnessViewModel = viewModel()) {
     var confirmDelete by remember { mutableStateOf(false) }
     var confirmPersona by remember { mutableStateOf<Persona?>(null) }
-    var loadedPersona by remember { mutableStateOf(vm.prefs.demoPersona) }
+    var confirmRemoveDemo by remember { mutableStateOf(false) }
+    val viewing by vm.activeProfileId.collectAsStateWithLifecycle()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -104,14 +110,24 @@ fun SettingsScreen(onBack: () -> Unit, onDataDeleted: () -> Unit, vm: WellnessVi
                         }
                     }
                     Text(
-                        "Load 42 days of synthetic data to explore the dashboard. This replaces all stored data.",
+                        "Load 42 days of synthetic data to explore the dashboard and history. " +
+                            "Adds synthetic data you can browse. Your own data is not changed.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Pill(
+                        "Viewing: ${ProfileIds.displayName(viewing)}",
+                        icon = if (ProfileIds.isDemo(viewing)) Icons.Rounded.Science else Icons.Rounded.Person,
+                        color = if (ProfileIds.isDemo(viewing)) AppTheme.colors.warning else MaterialTheme.colorScheme.primary
+                    )
                     Persona.entries.forEachIndexed { i, p ->
                         if (i > 0) HorizontalDivider(color = AppTheme.colors.hairline)
-                        PersonaRow(p, loaded = loadedPersona == p.name) { confirmPersona = p }
+                        PersonaRow(p, loaded = viewing == p.profileId) { confirmPersona = p }
                     }
+                    SoftButton(
+                        "Remove demo data", { confirmRemoveDemo = true }, Modifier.fillMaxWidth(),
+                        icon = Icons.Rounded.DeleteSweep, color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
             Reveal(2) {
@@ -166,14 +182,26 @@ fun SettingsScreen(onBack: () -> Unit, onDataDeleted: () -> Unit, vm: WellnessVi
             onDismissRequest = { confirmPersona = null },
             icon = { Icon(Icons.Rounded.Science, contentDescription = null, tint = Brand.Mood) },
             title = { Text("Load ${p.label}?") },
-            text = { Text(p.description + "\n\nAll currently stored data will be replaced.") },
+            text = { Text(p.description + "\n\nYour own data is not affected.") },
             confirmButton = {
                 TextButton(onClick = {
                     confirmPersona = null
-                    vm.loadPersona(p) { loadedPersona = p.name }
+                    vm.loadPersona(p) {}
                 }) { Text("Load") }
             },
             dismissButton = { TextButton(onClick = { confirmPersona = null }) { Text("Cancel") } }
+        )
+    }
+    if (confirmRemoveDemo) {
+        AlertDialog(
+            onDismissRequest = { confirmRemoveDemo = false },
+            icon = { Icon(Icons.Rounded.DeleteSweep, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+            title = { Text("Remove demo data?") },
+            text = { Text("Removes the three synthetic personas. Your own data is not affected.") },
+            confirmButton = {
+                TextButton(onClick = { confirmRemoveDemo = false; vm.removeDemoData {} }) { Text("Remove") }
+            },
+            dismissButton = { TextButton(onClick = { confirmRemoveDemo = false }) { Text("Cancel") } }
         )
     }
 }
@@ -245,7 +273,7 @@ private fun PersonaRow(p: Persona, loaded: Boolean, onClick: () -> Unit) {
                 Text(p.label, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
                 Text(p.description, style = MaterialTheme.typography.bodySmall, color = AppTheme.colors.inkMuted)
             }
-            if (loaded) Pill("Loaded", icon = Icons.Rounded.CheckCircle, color = AppTheme.colors.success)
+            if (loaded) Pill("Viewing", icon = Icons.Rounded.CheckCircle, color = AppTheme.colors.success)
             else Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = AppTheme.colors.inkMuted)
         }
     }

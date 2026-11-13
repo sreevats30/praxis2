@@ -82,6 +82,8 @@ import com.companion.yogawellness.ui.components.Overline
 import com.companion.yogawellness.ui.components.PanelCard
 import com.companion.yogawellness.ui.components.Pill
 import com.companion.yogawellness.ui.components.Reveal
+import com.companion.yogawellness.ui.profile.DemoBannerBar
+import com.companion.yogawellness.ui.profile.ProfileSelectorBar
 import com.companion.yogawellness.ui.theme.AppTheme
 import com.companion.yogawellness.ui.theme.Brand
 import com.companion.yogawellness.ui.wellness.formatEpochDay
@@ -101,7 +103,7 @@ private fun f1(v: Double) = String.format(Locale.US, "%.1f", v)
 
 @Composable
 fun WellnessDashboardScreen(onBack: () -> Unit, vm: DashboardViewModel = viewModel()) {
-    val data by vm.data.collectAsStateWithLifecycle()
+    val profileData by vm.profileData.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var error by remember { mutableStateOf<String?>(null) }
     val export = {
@@ -112,17 +114,27 @@ fun WellnessDashboardScreen(onBack: () -> Unit, vm: DashboardViewModel = viewMod
             onError = { error = it }
         )
     }
-    DashboardScreenContent(data, vm.personaLabel, error, onBack, export)
+    DashboardScreenContent(
+        profileData?.data, profileData?.demoLabel, error, onBack, export,
+        profiles = {
+            ProfileSelectorBar()
+            DemoBannerBar()
+        }
+    )
 }
 
-/** Stateless dashboard: [data] null while the statistics are computed. */
+/**
+ * Stateless dashboard: [data] null while the statistics are computed; [demoLabel] non-null while a
+ * demo persona is being viewed; [profiles] hosts the profile chips and demo banner.
+ */
 @Composable
 fun DashboardScreenContent(
     data: DashboardData?,
-    personaLabel: String?,
+    demoLabel: String?,
     error: String?,
     onBack: () -> Unit,
-    onExport: () -> Unit
+    onExport: () -> Unit,
+    profiles: @Composable () -> Unit = {}
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -135,7 +147,7 @@ fun DashboardScreenContent(
                 bottom = {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         GlassPill("On-device", icon = Icons.Rounded.Memory)
-                        personaLabel?.let { GlassPill("Demo · ${it.substringBefore(" ·")}", icon = Icons.Rounded.Science) }
+                        demoLabel?.let { GlassPill(it, icon = Icons.Rounded.Science, iconTint = Brand.Gold) }
                     }
                 }
             )
@@ -149,6 +161,7 @@ fun DashboardScreenContent(
                 .padding(horizontal = 16.dp, vertical = 18.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            profiles()
             error?.let { Callout(it, Icons.Rounded.ErrorOutline, MaterialTheme.colorScheme.error) }
             when {
                 data == null -> Box(Modifier.fillMaxWidth().height(240.dp), contentAlignment = Alignment.Center) {

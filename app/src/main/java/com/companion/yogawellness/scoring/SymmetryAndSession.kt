@@ -42,7 +42,14 @@ data class PoseSegmentStats(
     val meanScore: Double?,
     val bestStrictHoldSec: Double,
     val bestGraceHoldSec: Double,
-    val meanStability: Double?
+    val meanStability: Double?,
+    /** Seconds with alignment >= [AsanaSpecs.HOLD_THRESHOLD]. */
+    val qualitySec: Double = 0.0,
+    val peakScore: Double? = null,
+    /** Joint (spec name) that was the lowest-scoring one most often, ignoring frames where every joint was perfect. */
+    val worstJoint: String? = null,
+    /** Most frequent primary corrective cue over the segment. */
+    val topCue: String? = null
 )
 
 data class SideComparison(
@@ -66,7 +73,13 @@ class SessionTracker {
         var stabilitySum = 0.0
         var bestStrict = 0.0
         var bestGrace = 0.0
+        var qualitySec = 0.0
+        var peak: Double? = null
+        val worstJointCounts = HashMap<String, Int>()
+        val cueCounts = HashMap<String, Int>()
     }
+
+    private fun HashMap<String, Int>.argmax(): String? = maxByOrNull { it.value }?.key
 
     private val acc = LinkedHashMap<AsanaLabel, Acc>()
     private var tPrev = Double.NaN
@@ -77,8 +90,16 @@ class SessionTracker {
         tPrev = Double.NaN
     }
 
+    /** @param alignment optional full alignment result, used only for worst-joint / cue statistics. */
     @Synchronized
-    fun update(tSec: Double, label: AsanaLabel?, score: Double?, stability: Double?, hold: HoldStatus) {
+    fun update(
+        tSec: Double,
+        label: AsanaLabel?,
+        score: Double?,
+        stability: Double?,
+        hold: HoldStatus,
+        alignment: AlignmentScoreResult? = null
+    ) {
         val dt = if (tPrev.isNaN()) 0.0 else (tSec - tPrev).coerceIn(0.0, 0.5)
         tPrev = tSec
         if (label == null || !label.asana.isScored) return
@@ -87,6 +108,15 @@ class SessionTracker {
         if (score != null) {
             a.scoredFrames++
             a.scoreSum += score
+            if (score >= AsanaSpecs.HOLD_THRESHOLD) a.qualitySec += dt
+            a.peak = max(a.peak ?: score, score)
+        }
+        if (alignment != null) {
+            val worst = alignment.evaluations.minByOrNull { it.jointScore }
+            if (worst != null && worst.jointScore < 100.0) {
+                a.worstJointCounts.merge(worst.spec.name, 1, Int::plus)
+            }
+            alignment.primaryCorrectiveCue?.let { a.cueCounts.merge(it, 1, Int::plus) }
         }
         if (stability != null) {
             a.stabilityFrames++
@@ -105,7 +135,11 @@ class SessionTracker {
             meanScore = if (a.scoredFrames > 0) a.scoreSum / a.scoredFrames else null,
             bestStrictHoldSec = a.bestStrict,
             bestGraceHoldSec = a.bestGrace,
-            meanStability = if (a.stabilityFrames > 0) a.stabilitySum / a.stabilityFrames else null
+            meanStability = if (a.stabilityFrames > 0) a.stabilitySum / a.stabilityFrames else null,
+            qualitySec = a.qualitySec,
+            peakScore = a.peak,
+            worstJoint = a.worstJointCounts.argmax(),
+            topCue = a.cueCounts.argmax()
         )
     }
 

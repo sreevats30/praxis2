@@ -17,6 +17,8 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -58,7 +60,10 @@ import java.io.File
 @Config(sdk = [34], qualifiers = "w360dp-h740dp-xxhdpi")
 class ScreenRenderTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val freshViewModels = FreshViewModelFactoryRule()
+
+    @get:Rule(order = 1)
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     /** Software-draws the activity's root view (captureToImage() hangs under Robolectric). */
@@ -158,6 +163,49 @@ class ScreenRenderTest {
     }
 
     @Test
+    fun bottomPanelFinishAndSaveAndRecBadge() {
+        val out = warriorOutput(95.0)
+        val rec = com.companion.yogawellness.data.SessionAutoRecorder.Rec(active = true, elapsedSec = 42, posesSaved = 2)
+        setScreen {
+            Box(Modifier.fillMaxSize().background(Color(0xFF30363A))) {
+                com.companion.yogawellness.ui.practice.RecBadge(rec, Modifier.align(Alignment.TopEnd).padding(16.dp))
+                BottomPanel(
+                    PracticeUiState(output = out, modelReady = true, rec = rec),
+                    onExplain = {},
+                    modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(10.dp),
+                    onFinish = {}
+                )
+            }
+        }
+        compose.onNodeWithText("Finish & Save").assertExists()
+        compose.onNodeWithContentDescription("Recording session, 42 seconds, 2 poses saved").assertExists()
+        save("practice_finish_and_rec")
+    }
+
+    @Test
+    fun bottomPanelWithoutFinishBeforeASessionStarts() {
+        setScreen {
+            BottomPanel(PracticeUiState(output = null, modelReady = true), onExplain = {}, modifier = Modifier.fillMaxWidth(), onFinish = {})
+        }
+        compose.onNodeWithText("∑ Explain Score").assertExists()
+        compose.onNodeWithText("Finish & Save").assertDoesNotExist()
+    }
+
+    @Test
+    fun sessionReceiptDialog() {
+        val receipt = com.companion.yogawellness.data.SessionReceipt(
+            poses = listOf(
+                com.companion.yogawellness.data.ReceiptPose("Virabhadrasana II (Warrior II)", "Left leg forward", 12.4, 9.1, 86.0),
+                com.companion.yogawellness.data.ReceiptPose("Utkatasana (Chair Pose)", null, 3.0, 0.0, 52.0)
+            ),
+            totalSec = 15.4, meanScore = 79.4
+        )
+        setScreen { com.companion.yogawellness.ui.practice.SessionReceiptDialog(receipt, onViewHistory = {}, onKeepPractising = {}) }
+        compose.onNodeWithText("Virabhadrasana II · Left leg forward — 12.4 s held, 9.1 s at ≥75%, 86% alignment").assertExists()
+        compose.onNodeWithText("Keep practising").assertExists()
+    }
+
+    @Test
     fun explainScoreSheetContent() {
         val out = warriorOutput(125.0)
         setScreen { Surface { ExplainScoreContent(out, ToleranceProfile.STANDARD) } }
@@ -210,7 +258,31 @@ class ScreenRenderTest {
     fun settingsScreen() {
         setScreen { com.companion.yogawellness.ui.settings.SettingsScreen(onBack = {}, onDataDeleted = {}) }
         compose.onAllNodesWithText("Delete All My Data")[0].assertExists()
+        compose.onNodeWithText("Your own data is not changed.", substring = true).assertExists()
+        compose.onNodeWithText("Remove demo data").assertExists()
         save("settings")
+    }
+
+    @Test
+    fun profileSelectorAndDemoBanner() {
+        setScreen {
+            Surface {
+                androidx.compose.foundation.layout.Column(
+                    Modifier.padding(16.dp),
+                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)
+                ) {
+                    com.companion.yogawellness.ui.profile.ProfileSelector(
+                        activeId = com.companion.yogawellness.data.ProfileIds.PERSONA_A, busyId = null, onSelect = {}
+                    )
+                    com.companion.yogawellness.ui.profile.DemoBanner(com.companion.yogawellness.data.ProfileIds.PERSONA_A, onBackToMyAccount = {})
+                    com.companion.yogawellness.ui.profile.DemoBanner(com.companion.yogawellness.data.ProfileIds.MY_ACCOUNT, onBackToMyAccount = {})
+                }
+            }
+        }
+        compose.onNodeWithText("Viewing demo data (Demo A · Consistent). Your own data is safe.").assertExists()
+        compose.onNodeWithText("👤 My Account").assertExists()
+        org.junit.Assert.assertEquals(1, compose.onAllNodesWithText("Back to My Account").fetchSemanticsNodes().size)
+        save("profile_selector_demo_banner")
     }
 
     @Test
@@ -227,6 +299,112 @@ class ScreenRenderTest {
         compose.onNodeWithText("Weekly trend").assertExists()
         compose.onNodeWithText("Practice & stress").assertExists()
         save("dashboard_persona_a")
+    }
+
+    private fun historyState(profileId: String = com.companion.yogawellness.data.ProfileIds.MY_ACCOUNT): com.companion.yogawellness.ui.history.HistoryUiState {
+        val now = 1_731_400_000_000L
+        val live = com.companion.yogawellness.data.db.PracticeSessionEntity(
+            id = 2, epochDay = 20_040, startedAtMs = now, endedAtMs = now + 200_000, activeSec = 200.0, meanScore = 72.0,
+            profile = "STANDARD", profileId = profileId
+        )
+        val manual = com.companion.yogawellness.data.db.PracticeSessionEntity(
+            id = 1, epochDay = 20_039, startedAtMs = now - 86_400_000, endedAtMs = now - 86_400_000, activeSec = 1800.0,
+            meanScore = null, profile = "STANDARD", profileId = profileId, source = "MANUAL"
+        )
+        val poses = listOf(
+            com.companion.yogawellness.data.db.PoseRecordEntity(
+                id = 1, sessionId = 2, asana = "VIRABHADRASANA_II", side = "FRONT_LEFT", lockedSec = 12.4, meanScore = 86.0,
+                bestStrictHoldSec = 8.0, bestGraceHoldSec = 9.5, meanStability = 92.0, startedAtMs = now, qualitySec = 9.1,
+                peakScore = 95.0
+            ),
+            com.companion.yogawellness.data.db.PoseRecordEntity(
+                id = 2, sessionId = 2, asana = "VRIKSHASANA", side = "LEFT_LIFTED", lockedSec = 4.0, meanScore = 41.0,
+                bestStrictHoldSec = 0.0, bestGraceHoldSec = 0.0, meanStability = 80.0, startedAtMs = now + 20_000, qualitySec = 0.0,
+                peakScore = 55.0, worstJoint = "Pelvic Level", topCue = "Level your hips horizontally"
+            )
+        )
+        val items = com.companion.yogawellness.wellness.HistoryAggregator.group(listOf(live, manual), poses)
+        return com.companion.yogawellness.ui.history.HistoryUiState(
+            profileId, items, com.companion.yogawellness.wellness.HistoryAggregator.summary(items), loading = false
+        )
+    }
+
+    @Test
+    fun historyEmpty() {
+        setScreen {
+            com.companion.yogawellness.ui.history.SessionHistoryContent(
+                com.companion.yogawellness.ui.history.HistoryUiState(loading = false), onStartPractice = {}, onDelete = {}, onLogManual = {}
+            )
+        }
+        compose.onNodeWithText("No sessions yet. Start a practice — every pose you hold for 2 seconds is saved here.").assertExists()
+        compose.onNodeWithText("Start practice").assertExists()
+        save("history_empty")
+    }
+
+    @Test
+    fun historyPopulatedAndExpanded() {
+        setScreen { com.companion.yogawellness.ui.history.SessionHistoryContent(historyState(), onStartPractice = {}, onDelete = {}, onLogManual = {}) }
+        compose.onNodeWithText("72% align").assertExists()
+        compose.onNodeWithText("Manual").assertExists()
+        compose.onAllNodesWithText("Collapsed", substring = true, useUnmergedTree = true)
+        compose.onAllNodesWithContentDescription("Delete session from", substring = true)[0].assertExists()
+        compose.onAllNodesWithText("3m 20s")[0].performClick() // expand the live session
+        compose.onNodeWithText("Virabhadrasana II · Left leg forward").assertExists()
+        compose.onNodeWithText("Held 12.4 s (≥75%: 9.1 s)").assertExists()
+        compose.onNodeWithText("Worst joint: Pelvic Level — \"Level your hips horizontally\"").assertExists()
+        save("history_populated")
+    }
+
+    @Test
+    fun historyDemoProfileIsReadOnly() {
+        setScreen {
+            com.companion.yogawellness.ui.history.SessionHistoryContent(
+                historyState(com.companion.yogawellness.data.ProfileIds.PERSONA_B), onStartPractice = {}, onDelete = {}, onLogManual = {},
+                header = {
+                    com.companion.yogawellness.ui.profile.DemoBanner(com.companion.yogawellness.data.ProfileIds.PERSONA_B, onBackToMyAccount = {})
+                }
+            )
+        }
+        compose.onNodeWithText("Viewing demo data (Demo B · Exam Gap). Your own data is safe.").assertExists()
+        compose.onNodeWithText("Log manual practice").assertDoesNotExist()
+        org.junit.Assert.assertTrue(compose.onAllNodesWithContentDescription("Delete session from", substring = true).fetchSemanticsNodes().isEmpty())
+        save("history_demo")
+    }
+
+    @Test
+    fun historyAtDoubleFontScale() {
+        setScreen {
+            val d = androidx.compose.ui.platform.LocalDensity.current
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(d.density, fontScale = 2f)
+            ) {
+                com.companion.yogawellness.ui.history.SessionHistoryContent(historyState(), onStartPractice = {}, onDelete = {}, onLogManual = {})
+            }
+        }
+        compose.onAllNodesWithText("3m 20s")[0].performClick()
+        save("history_fontscale_2")
+    }
+
+    @Test
+    fun homeWithBottomNavigation() {
+        val app = androidx.test.core.app.ApplicationProvider.getApplicationContext<com.companion.yogawellness.YogaWellnessApp>()
+        // Robolectric can reuse the app database file across test classes: start from a clean slate.
+        kotlinx.coroutines.runBlocking { app.repository.deleteAllData() }
+        app.preferences.consentAcceptedAtMs = 1L
+        setScreen { AppNavHost() }
+        listOf("Home", "Learn", "History", "Insights").forEach { compose.onNodeWithText(it).assertExists() }
+        save("home_with_bottom_nav")
+        compose.onNodeWithText("History").performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("No sessions yet", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Insights").assertExists() // bar stays on top-level routes
+    }
+
+    @Test
+    fun bottomBarOnlyOnTopLevelRoutes() {
+        listOf(Routes.HOME, Routes.CODEX, Routes.HISTORY, Routes.DASHBOARD).forEach { org.junit.Assert.assertTrue(it, showsBottomBar(it)) }
+        listOf(Routes.CONSENT, Routes.PRACTICE, Routes.CHECK_IN, Routes.QUESTIONNAIRE, Routes.SETTINGS, Routes.CODEX_DETAIL, null).forEach {
+            org.junit.Assert.assertFalse("$it", showsBottomBar(it))
+        }
     }
 
     @Test

@@ -105,7 +105,13 @@ private val HudGlass = Color(0xBF07111F)
 private val HudEdge = Color.White.copy(alpha = 0.12f)
 
 @Composable
-fun PracticeScreen(onBack: () -> Unit, vm: PracticeViewModel = viewModel()) {
+fun PracticeScreen(
+    onBack: () -> Unit,
+    onFinished: () -> Unit = onBack,
+    /** Optional hint from the Learn tab. Display only: never changes classification, locking or scoring. */
+    targetAsana: Asana? = null,
+    vm: PracticeViewModel = viewModel()
+) {
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var hasCamera by remember {
@@ -126,7 +132,11 @@ fun PracticeScreen(onBack: () -> Unit, vm: PracticeViewModel = viewModel()) {
 
     LifecycleStartEffect(vm) {
         vm.onStart()
-        onStopOrDispose { vm.onStop() }
+        onStopOrDispose {
+            vm.onStop()
+            // ON_STOP (Home, screen lock, app switch): persist the session so far.
+            vm.checkpointNow()
+        }
     }
 
     Box(
@@ -196,6 +206,9 @@ fun PracticeScreen(onBack: () -> Unit, vm: PracticeViewModel = viewModel()) {
                     HudIconButton(Icons.Rounded.Cameraswitch, "Switch camera", vm::toggleCamera, bare = true)
                 }
             }
+            targetAsana?.let { TargetChip(it) }
+            // Own line: the top row has no room for it on a 360 dp phone.
+            if (state.rec.active && !state.isReplaying) RecBadge(state.rec)
             if (showSafety) SafetyBanner { showSafety = false }
             state.replayName?.let { ReplayBanner(it, vm::stopReplay) }
             state.recordingSec?.let { HudPill(String.format(Locale.US, "Recording landmarks %.0f / 20 s", it), Icons.Rounded.FiberManualRecord, ScoreColors.Red) }
@@ -208,6 +221,8 @@ fun PracticeScreen(onBack: () -> Unit, vm: PracticeViewModel = viewModel()) {
         BottomPanel(
             state = state,
             onExplain = { showExplain = true },
+            onFinish = vm::finishAndSave,
+            targetAsana = targetAsana,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
@@ -218,6 +233,13 @@ fun PracticeScreen(onBack: () -> Unit, vm: PracticeViewModel = viewModel()) {
 
     if (showExplain) {
         ExplainScoreSheet(state.output, state.profile) { showExplain = false }
+    }
+    state.receipt?.let { receipt ->
+        SessionReceiptDialog(
+            receipt = receipt,
+            onViewHistory = { vm.clearReceipt(); onFinished() },
+            onKeepPractising = vm::clearReceipt
+        )
     }
     if (showReplayPicker) {
         ReplayPickerDialog(
@@ -455,7 +477,13 @@ private fun CameraPermissionPrompt(modifier: Modifier, onRequest: () -> Unit) {
 // ---------------------------------------------------------------------------------------------
 
 @Composable
-internal fun BottomPanel(state: PracticeUiState, onExplain: () -> Unit, modifier: Modifier) {
+internal fun BottomPanel(
+    state: PracticeUiState,
+    onExplain: () -> Unit,
+    modifier: Modifier,
+    onFinish: (() -> Unit)? = null,
+    targetAsana: Asana? = null
+) {
     val out = state.output
     val explain: @Composable () -> Unit = { ExplainChip(onExplain) }
     Surface(
@@ -490,6 +518,11 @@ internal fun BottomPanel(state: PracticeUiState, onExplain: () -> Unit, modifier
                             },
                             "Detecting ${cand.asana.sanskritName}…", "Hold steady while the pose locks in", explain
                         )
+                    } else if (targetAsana != null) {
+                        StatusRow(
+                            { PoseGlyph(targetAsana, Modifier.size(44.dp), glow = false) },
+                            "Target: ${targetAsana.englishName}", targetHint(targetAsana), explain
+                        )
                     } else {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("Move into a pose", style = MaterialTheme.typography.titleMedium, color = Color.White, modifier = Modifier.weight(1f))
@@ -521,6 +554,32 @@ internal fun BottomPanel(state: PracticeUiState, onExplain: () -> Unit, modifier
             // The coach usually speaks the cue already on screen; show its caption only when it adds something.
             val shown = if (label != null && label.asana != Asana.TADASANA) scoredMessage(out) else null
             state.caption?.takeIf { it.text != shown }?.let { CoachCaption(it) }
+            // Shown once a live session is running (calibrated or a pose locked).
+            if (onFinish != null && state.rec.active && !state.isReplaying) {
+                GradientButton(
+                    "Finish & Save", onFinish, Modifier.fillMaxWidth(),
+                    icon = Icons.Rounded.CheckCircle,
+                    brush = Brush.horizontalGradient(listOf(Brand.Mint, Brand.Cyan)),
+                    contentColor = Brand.Navy900,
+                    height = 46.dp
+                )
+            }
+        }
+    }
+}
+
+/** Idle-panel hint for a target chosen in the Learn tab (all four poses are still detected). */
+fun targetHint(target: Asana): String =
+    "Move into ${target.displayName} when ready" +
+        (if (target.cameraAngle == CameraAngle.SIDE_OR_45) " (${target.cameraAngle.instruction.lowercase()})" else "") +
+        ". Any of the four poses is still detected."
+
+@Composable
+private fun TargetChip(target: Asana) {
+    HudCard(color = Brand.Teal700.copy(alpha = 0.92f)) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PoseGlyph(target, Modifier.size(22.dp), glow = false)
+            Text("Target: ${target.englishName}", color = Color.White, style = MaterialTheme.typography.labelLarge)
         }
     }
 }

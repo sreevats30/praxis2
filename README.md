@@ -4,6 +4,9 @@ Offline Android app built from [`blueprint.md`](blueprint.md) (v5): live pose sc
 calibration, an offline voice coach, daily/fortnightly wellness check-ins with a crisis guardrail, honest
 statistics, and a 1-page PDF report. Everything runs on the phone; the `INTERNET` permission is stripped.
 
+Version 1.1 adds demo profiles that never touch your own data, automatic session saving, a session History,
+and a **Learn** library of 32 poses with animated stick-figure demos.
+
 > This app is a wellness and self-reflection companion, not a medical or diagnostic device.
 
 ## Requirements
@@ -56,20 +59,59 @@ Run the on-device checks (real PDF writer + MediaPipe model load) with the phone
 On Windows use `gradlew.bat` instead of `./gradlew`. If Gradle cannot find the SDK, create `local.properties`
 in the repo root containing `sdk.dir=/path/to/Android/Sdk`.
 
+## What's in the app (v1.1)
+
+The bottom bar has four tabs: **Home**, **Learn**, **History** and **Insights**. Practice, check-ins, questionnaires
+and Settings open full-screen without the bar.
+
+- **Live scoring covers exactly 4 poses:** Vrikshasana (Tree), Virabhadrasana II (Warrior II), Trikonasana
+  (Triangle) and Utkatasana (Chair). Tadasana (Mountain) is the calibration pose and is never scored. The camera
+  does not recognise any other pose.
+- **Learn** lists 32 poses in six everyday categories with search and filters (All, Live-scored, Desk, Morning,
+  Standing, Balance, Hips, Evening). Each pose opens an animated stick-figure demo (no video, no images: it is drawn
+  procedurally from joint angles) with Front / 45° / Side views, 0.5× / 1× speed, pause at the peak, angle callouts,
+  a breathing pacer, steps, common mistakes, easier options and a safety note. The 4 live poses have a
+  **Practice this live** button. It opens Practice with a "Target" hint, but scoring is the same for every pose.
+  The other 28 are follow-along demos only and are never scored or recorded. With *Remove animations* switched
+  on in Android's accessibility settings, demos start paused at the peak pose.
+- **Automatic session saving:** every scored pose you hold (locked) for **at least 2.0 seconds** is saved, whatever
+  its score. The session is checkpointed every 5 s and again when you press Home, lock the screen, switch camera or
+  start a replay, so a crash or a closed app loses at most a few seconds. A red **REC** badge shows the running
+  session. **Finish & Save** shows a receipt, and **View History** opens the saved session. Replays are never
+  recorded.
+- **History** lists every session, newest first: duration, alignment and stability, per-pose hold times, the worst
+  joint and the coaching cue. You can delete a session (with confirmation) or **log manual practice** (minutes only,
+  with no score and no pose rows, so your alignment analytics are never inflated).
+- **Demo profiles:** the profile chips on Insights and History switch between **👤 My Account** and three
+  synthetic personas (Demo A · Consistent, Demo B · Exam Gap, Demo C · Null Pattern). A persona is generated the first
+  time you view it and stored **beside** your data, never instead of it. While a demo is shown, an amber banner
+  reads *"Viewing demo data (…). Your own data is safe."* with **Back to My Account**. Exported PDFs of a demo
+  are labelled DEMO DATA. Anything you record (practice, check-ins, questionnaires) always goes to My Account.
+  **Settings → Remove demo data** deletes only the personas. **Delete All My Data** still erases everything.
+- **Upgrading from 1.0** keeps your data: the database migrates in place (Room v1 → v2) and never falls back to a
+  destructive reset.
+
 ## Stage demo script
 
 1. **First run** → accept the consent & safety screen (three boxes).
-2. **Settings → Demo data → Persona A** to fill 42 days of history (B = exam gap, C = null pattern).
+2. **Insights tab → profile chip "Demo A · Consistent"** shows 42 days of synthetic history (B = exam gap,
+   C = null pattern). The amber banner confirms your own data is untouched. Tap **Back to My Account** before
+   practising.
 3. **Start practice** → prop the phone upright 2–3 m away. The pre-flight pills must all turn green
    (full body, distance, phone steady ≤15° tilt, lighting).
 4. Stand in **Tadasana** for 5 s → "Calibrated".
 5. **Warrior II with a shallow front knee (~125°)** → red 41% score ring, curved arrow on the knee, voice:
    *"Bend your front knee deeper toward 90 degrees"*. Tap **∑ Explain Score** to show every term of the formula.
 6. Bend to ~95° → green, hold timer runs, chime + *"Beautiful. Hold it there."* after 4 s at ≥88%.
-7. Do the other side → left-vs-right symmetry. Back out → the session is saved.
-8. **Open dashboard** → weekly trend, symmetry, insight cards (ρ, p, n + caveats) → **Export PDF** → share.
+7. Do the other side → left-vs-right symmetry. Tap **Finish & Save** → receipt → **View History**: the session
+   and both sides are listed with hold times, alignment and the worst joint. (It is saved even if you just press
+   Home instead.)
+8. **Insights tab** → switch to **Demo A** → weekly trend, symmetry, insight cards (ρ, p, n + caveats) →
+   **Export PDF** (marked DEMO DATA) → share. Switch back to **My Account** to show your own session.
 9. **Mood reflection (PHQ-9)** → answering item 9 with "Several days" opens the Tele-MANAS 14416 / 112 sheet.
-10. Privacy proof: Android Studio → `app/src/main/AndroidManifest.xml` → **Merged Manifest** tab shows only
+10. **Learn tab** → *14. Warrior II* → the stick figure animates into the pose with angle callouts (front knee 95°,
+    arms level). Switch Front / 45° / Side, then **Practice this live**.
+11. Privacy proof: Android Studio → `app/src/main/AndroidManifest.xml` → **Merged Manifest** tab shows only
     `CAMERA` (plus AndroidX's app-private `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`), no `INTERNET`.
 
 **No camera / bad lighting on stage?** Practice screen → ⟲ (replay) → *Demo · Warrior II correction
@@ -111,6 +153,7 @@ Joint targets/tolerances live in `scoring/AsanaSpecs.kt`; classifier rules in
 | Personas | `wellness/MockPersonaSeeder.kt` |
 | Dashboard + PDF | `ui/dashboard/`, `wellness/DashboardBuilder.kt`, `report/PdfReportExporter.kt` |
 | Room storage | `data/db/`, `data/WellnessRepository.kt` |
+<<<<<<< HEAD
 | Design system (colours, type, shapes) | `ui/theme/Theme.kt`, `ui/theme/Type.kt` |
 | Shared UI components + artwork | `ui/components/Clinical.kt`, `ui/components/Artwork.kt` |
 | Home summary (streak, week, sparklines) | `wellness/ActivitySummary.kt`, `ui/home/` |
@@ -127,6 +170,13 @@ Joint targets/tolerances live in `scoring/AsanaSpecs.kt`; classifier rules in
   `HeroDecor`, `PulseLine` (animated ECG trace), `BrandMark` and `PoseGlyph` (keypoint-style figure for each asana).
 - **Screenshots**: `./gradlew :app:testDebugUnitTest --tests '*ScreenRenderTest*'` renders every screen (including
   full-length, demo-data and dark-mode variants) to `app/build/screenshots/`.
+=======
+| Profiles + demo data (v1.1) | `data/ProfileIds.kt`, `data/ActiveProfile.kt`, `data/ProfileSwitcher.kt`, `ui/profile/` |
+| Room 1→2 migration | `data/db/WellnessDatabase.kt` (`MIGRATION_1_2`), `app/schemas/` |
+| Session auto-recording | `data/SessionAutoRecorder.kt`, `wellness/DailyAggregator.kt` (`SessionSummarizer`) |
+| History | `ui/history/`, `wellness/HistoryAggregator.kt` |
+| Learn / Asana Codex | `codex/` (rig, solver, timeline, 32-pose catalog), `ui/codex/` |
+>>>>>>> origin/claude/intelligent-maxwell-0cqtmh
 
 ## Deliberate deviations from the blueprint
 
@@ -141,3 +191,6 @@ Joint targets/tolerances live in `scoring/AsanaSpecs.kt`; classifier rules in
 - **Coach**: when a pose lock announcement and a ready correction coincide they are spoken together, so the knee cue
   in the demo is heard while the pose is still wrong.
 - **Preview uses FIT_CENTER** (whole analysed frame visible) so "full body in frame" matches what the user sees.
+- **Learn demos use a one-segment spine.** Spinal curves (Cat-Cow, Puppy, Cobra) are shown through the head, hip and
+  arm angles. Each pose's notes are in a code comment in `codex/Catalog*.kt`, and `ForwardKinematicsTest` checks
+  every callout against the solver within ±3° (±5° for twist or whole-body-rotation poses).

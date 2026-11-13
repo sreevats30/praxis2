@@ -51,10 +51,10 @@ class WellnessRepositoryTest {
     fun checkInIsUpsertedPerDay() = runTest {
         repo.saveCheckIn(100, mood = 5, stress = 7, sleep = 6, preTension = 7, postTension = 4)
         repo.saveCheckIn(100, mood = 8, stress = 3, sleep = 7, preTension = null, postTension = null)
-        val all = db.checkIns().all()
+        val all = db.checkIns().all(ProfileIds.MY_ACCOUNT)
         assertEquals(1, all.size)
         assertEquals(8, all.single().mood)
-        assertEquals(8, repo.observeCheckIn(100).first()!!.mood)
+        assertEquals(8, repo.observeCheckIn(100, ProfileIds.MY_ACCOUNT).first()!!.mood)
     }
 
     @Test
@@ -66,7 +66,7 @@ class WellnessRepositoryTest {
         val id = repo.saveSession(segs, 0, 60_000, 100, "STANDARD")
         assertNotNull(id)
         assertEquals(2, db.sessions().posesFor(id!!).size)
-        assertEquals(2, repo.observePosesSince(0).first().size)
+        assertEquals(2, repo.observePosesSince(0, ProfileIds.MY_ACCOUNT).first().size)
         assertNull(repo.saveSession(emptyList(), 0, 1, 100, "STANDARD"))
     }
 
@@ -75,28 +75,31 @@ class WellnessRepositoryTest {
         repo.saveQuestionnaire(QuestionnaireType.PHQ9, 100, List(9) { 1 })
         repo.saveQuestionnaire(QuestionnaireType.PHQ9, 114, List(9) { 0 })
         repo.saveQuestionnaire(QuestionnaireType.GAD7, 114, List(7) { 2 })
-        assertEquals(0, repo.observeLatest(QuestionnaireType.PHQ9).first()!!.totalScore)
-        assertEquals(listOf(9, 0), repo.observeHistory(QuestionnaireType.PHQ9).first().map { it.totalScore })
-        assertEquals(14, repo.observeLatest(QuestionnaireType.GAD7).first()!!.totalScore)
+        assertEquals(0, repo.observeLatest(QuestionnaireType.PHQ9, ProfileIds.MY_ACCOUNT).first()!!.totalScore)
+        assertEquals(listOf(9, 0), repo.observeHistory(QuestionnaireType.PHQ9, ProfileIds.MY_ACCOUNT).first().map { it.totalScore })
+        assertEquals(14, repo.observeLatest(QuestionnaireType.GAD7, ProfileIds.MY_ACCOUNT).first()!!.totalScore)
     }
 
     @Test
-    fun personaReplacesDataAndDeleteAllWipesEverything() = runTest {
+    fun personaIsAddedBesideMyDataAndDeleteAllWipesEverything() = runTest {
+        // v1.1: seeding a persona no longer replaces the user's data (it used clearAllTables()).
         repo.saveCheckIn(5, 1, 1, 1, null, null)
         val data = MockPersonaSeeder.generate(Persona.A_CONSISTENT, 20_000L)
-        repo.replaceWithPersona(data)
-        assertEquals(data.checkIns.size, db.checkIns().all().size)
-        assertEquals(data.sessions.size, db.sessions().all().size)
-        assertEquals(6, db.questionnaires().all().size)
-        assertEquals(Persona.A_CONSISTENT.name, app.preferences.demoPersona)
+        repo.seedPersona(data)
+        val a = Persona.A_CONSISTENT.profileId
+        assertEquals(data.checkIns.size, db.checkIns().all(a).size)
+        assertEquals(data.sessions.size, db.sessions().all(a).size)
+        assertEquals(6, db.questionnaires().all(a).size)
+        assertEquals(1, db.checkIns().all(ProfileIds.MY_ACCOUNT).size)
 
         app.preferences.consentAcceptedAtMs = 123L
         repo.deleteAllData()
-        assertTrue(db.checkIns().all().isEmpty())
-        assertTrue(db.sessions().all().isEmpty())
-        assertTrue(db.questionnaires().all().isEmpty())
+        for (pid in listOf(ProfileIds.MY_ACCOUNT) + ProfileIds.DEMO_IDS) {
+            assertTrue(db.checkIns().all(pid).isEmpty())
+            assertTrue(db.sessions().all(pid).isEmpty())
+            assertTrue(db.questionnaires().all(pid).isEmpty())
+        }
         assertFalse(clipsDir.exists())
         assertFalse(app.preferences.hasConsent)
-        assertNull(app.preferences.demoPersona)
     }
 }

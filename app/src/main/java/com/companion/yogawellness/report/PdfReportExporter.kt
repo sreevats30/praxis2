@@ -88,8 +88,12 @@ object ReportPageRenderer {
         )
         y += 16f
         if (personaLabel != null) {
-            canvas.drawText("Demo data: $personaLabel", MARGIN, y + 10f, text(9f, C.muted))
-            y += 14f
+            // Demo PDFs must never be mistaken for the user's own report.
+            canvas.drawText(
+                "DEMO DATA — $personaLabel (synthetic persona, not your own records)",
+                MARGIN, y + 11f, text(10.5f, 0xFF8A4B00.toInt(), bold = true)
+            )
+            y += 16f
         }
         y += 4f
         y += paragraph(canvas, NON_DIAGNOSTIC_STATEMENT, MARGIN, y, contentW, 9f, C.inkSecondary, italic = true) + 10f
