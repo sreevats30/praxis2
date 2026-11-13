@@ -1,8 +1,29 @@
 package com.companion.yogawellness.ui.codex
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.exponentialDecay
+import androidx.compose.animation.core.withInfiniteAnimationFrameNanos
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.material.icons.rounded.SwipeLeft
+import androidx.compose.material.icons.rounded._360
+import androidx.compose.runtime.MutableFloatState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.stateDescription
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -103,10 +124,30 @@ fun AsanaDetailContent(
     val reducedMotion = animationsDisabled()
     var playing by rememberSaveable(item.id) { mutableStateOf(initialPlaying) }
     var halfSpeed by rememberSaveable(item.id) { mutableStateOf(false) }
-    var viewName by rememberSaveable(item.id) { mutableStateOf(item.defaultView.name) }
+    // 360° view: yaw turns the figure about its vertical axis (any angle), tilt looks down from above.
+    val yaw = remember(item.id) { Animatable(item.defaultView.yawDeg) }
+    val tilt = remember(item.id) { Animatable(0f) }
+    var autoRotate by rememberSaveable(item.id) { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val presetIndex by remember(item.id) { derivedStateOf { presetIndexFor(yaw.value) } }
+    val goToYaw: (Float) -> Unit = { target ->
+        autoRotate = false
+        scope.launch {
+            val end = yaw.value + shortestTurn(yaw.value, target)
+            if (reducedMotion) yaw.snapTo(end) else yaw.animateTo(end, tween(380))
+            yaw.snapTo(normalizeDeg(yaw.value))
+        }
+    }
+    LaunchedEffect(autoRotate, item.id) {
+        if (!autoRotate || reducedMotion) return@LaunchedEffect
+        var last = -1L
+        while (true) {
+            val now = withInfiniteAnimationFrameNanos { it }
+            if (last >= 0) yaw.snapTo(normalizeDeg(yaw.value + (now - last) / 1e9f * AUTO_ROTATE_DEG_PER_SEC))
+            last = now
+        }
+    }
     var showAngles by rememberSaveable(item.id) { mutableStateOf(true) }
-    val view = CodexView.valueOf(viewName)
-    val yaw by animateFloatAsState(view.yawDeg, if (reducedMotion) snap() else tween(300), label = "yaw")
     val breathTime = remember(item.id) { mutableFloatStateOf(0f) }
 
     Scaffold(
@@ -150,14 +191,21 @@ fun AsanaDetailContent(
                 contentPadding = PaddingValues(10.dp),
                 spacing = 10.dp
             ) {
-                SkeletonDemoCanvas(
+                RotatableDemo(
                     item = item,
                     playing = playing,
-                    speed = if (halfSpeed) 0.5f else 1f,
-                    yawDeg = yaw,
+                    halfSpeed = halfSpeed,
                     showAngles = showAngles,
-                    modifier = Modifier.fillMaxWidth(),
-                    breathTime = breathTime
+                    yaw = yaw,
+                    tilt = tilt,
+                    reducedMotion = reducedMotion,
+                    breathTime = breathTime,
+                    onUserRotate = { autoRotate = false },
+                    onRotateBy = { goToYaw(yaw.value + it) },
+                    onReset = {
+                        goToYaw(item.defaultView.yawDeg)
+                        scope.launch { if (reducedMotion) tilt.snapTo(0f) else tilt.animateTo(0f, tween(380)) }
+                    }
                 )
                 // FlowRows so the controls wrap instead of clipping at large font sizes.
                 FlowRow(
@@ -178,13 +226,27 @@ fun AsanaDetailContent(
                         }
                     }
                     Segmented(listOf("0.5×", "1×"), if (halfSpeed) 0 else 1) { halfSpeed = it == 0 }
+                    Surface(
+                        onClick = { autoRotate = !autoRotate },
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (autoRotate) Color.White else Color.White.copy(alpha = 0.10f),
+                        contentColor = if (autoRotate) Brand.Navy900 else Color.White,
+                        modifier = Modifier
+                            .heightIn(min = 44.dp)
+                            .semantics { stateDescription = if (autoRotate) "On" else "Off" }
+                    ) {
+                        Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Icon(Icons.Rounded._360, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Text("Auto-rotate", style = MaterialTheme.typography.labelLarge)
+                        }
+                    }
                 }
                 FlowRow(
                     Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Segmented(CodexView.entries.map { it.label }, CodexView.entries.indexOf(view)) { viewName = CodexView.entries[it].name }
+                    Segmented(VIEW_PRESETS.map { it.first }, presetIndex) { goToYaw(VIEW_PRESETS[it].second) }
                     Row(
                         Modifier
                             .heightIn(min = 48.dp)
@@ -266,6 +328,169 @@ fun AsanaDetailContent(
                 }
             }
             Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+/** View shortcuts: Front, 45°, Side (the catalogue's views) plus Back. */
+private val VIEW_PRESETS: List<Pair<String, Float>> =
+    CodexView.entries.map { it.label to it.yawDeg } + ("Back" to 180f)
+
+private const val AUTO_ROTATE_DEG_PER_SEC = 36f
+
+/** Angle in [0, 360). */
+internal fun normalizeDeg(deg: Float): Float = ((deg % 360f) + 360f) % 360f
+
+/** Signed shortest rotation from [from] to [to], in (-180, 180]. */
+internal fun shortestTurn(from: Float, to: Float): Float {
+    val d = normalizeDeg(to - from)
+    return if (d > 180f) d - 360f else d
+}
+
+/** Index of the view shortcut the figure is facing (within 2°), or -1 between shortcuts. */
+internal fun presetIndexFor(yawDeg: Float): Int =
+    VIEW_PRESETS.indexOfFirst { kotlin.math.abs(shortestTurn(yawDeg, it.second)) < 2f }
+
+/**
+ * The animated figure with 360° finger control:
+ *  - drag sideways to spin it (flick for momentum); vertical swipes still scroll the page,
+ *  - drag with two fingers to tilt the view (look down from above),
+ *  - double-tap to reset; screen readers get rotate / tilt / reset actions.
+ */
+@Composable
+private fun RotatableDemo(
+    item: AsanaCodexItem,
+    playing: Boolean,
+    halfSpeed: Boolean,
+    showAngles: Boolean,
+    yaw: Animatable<Float, AnimationVector1D>,
+    tilt: Animatable<Float, AnimationVector1D>,
+    reducedMotion: Boolean,
+    breathTime: MutableFloatState,
+    onUserRotate: () -> Unit,
+    onRotateBy: (Float) -> Unit,
+    onReset: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    var touched by rememberSaveable(item.id) { mutableStateOf(false) }
+    val decay = remember { exponentialDecay<Float>(frictionMultiplier = 1.6f) }
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .semantics {
+                customActions = listOf(
+                    CustomAccessibilityAction("Rotate left 45 degrees") { onRotateBy(-45f); true },
+                    CustomAccessibilityAction("Rotate right 45 degrees") { onRotateBy(45f); true },
+                    CustomAccessibilityAction("Tilt view from above") {
+                        scope.launch { tilt.snapTo((tilt.value + 20f).coerceAtMost(MAX_TILT_DEG)) }; true
+                    },
+                    CustomAccessibilityAction("Reset view") { onReset(); true }
+                )
+            }
+            .pointerInput(item.id) {
+                detectTapGestures(onDoubleTap = { touched = true; onReset() })
+            }
+            .pointerInput(item.id) {
+                val degPerPx = 360f / (size.width * 1.1f)
+                val tiltPerPx = 80f / size.height
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val tracker = VelocityTracker()
+                    tracker.addPosition(down.uptimeMillis, down.position)
+                    var spinning = false
+                    var tilting = false
+                    var dx = 0f
+                    var dy = 0f
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val pressed = event.changes.filter { it.pressed }
+                        if (pressed.isEmpty()) break
+                        if (pressed.size >= 2) {
+                            // Two fingers: tilt (drag down to look from above).
+                            if (!tilting) { tilting = true; touched = true; onUserRotate(); scope.launch { yaw.stop() } }
+                            val moveY = pressed.fold(0f) { acc, c -> acc + c.positionChange().y } / pressed.size
+                            scope.launch { tilt.snapTo((tilt.value + moveY * tiltPerPx).coerceIn(0f, MAX_TILT_DEG)) }
+                            pressed.forEach { it.consume() }
+                            continue
+                        }
+                        if (tilting) { pressed.forEach { it.consume() }; continue }
+                        val c = pressed.first()
+                        if (c.isConsumed) break // the page scroll took this gesture
+                        val d = c.positionChange()
+                        if (!spinning) {
+                            dx += d.x; dy += d.y
+                            if (kotlin.math.abs(dx) > viewConfiguration.touchSlop && kotlin.math.abs(dx) > kotlin.math.abs(dy)) {
+                                spinning = true; touched = true; onUserRotate(); scope.launch { yaw.stop() }
+                            } else if (kotlin.math.abs(dy) > viewConfiguration.touchSlop) {
+                                break // vertical swipe: leave it to the page scroll
+                            }
+                        }
+                        if (spinning) {
+                            tracker.addPosition(c.uptimeMillis, c.position)
+                            scope.launch { yaw.snapTo(yaw.value + d.x * degPerPx) }
+                            c.consume()
+                        }
+                    }
+                    if (spinning) {
+                        val velocity = tracker.calculateVelocity().x * degPerPx
+                        scope.launch {
+                            if (!reducedMotion) yaw.animateDecay(velocity, decay)
+                            yaw.snapTo(normalizeDeg(yaw.value))
+                        }
+                    }
+                }
+            }
+    ) {
+        SkeletonDemoCanvas(
+            item = item,
+            playing = playing,
+            speed = if (halfSpeed) 0.5f else 1f,
+            yawDeg = yaw.value,
+            showAngles = showAngles,
+            modifier = Modifier.fillMaxWidth(),
+            breathTime = breathTime,
+            tiltDeg = tilt.value,
+            fullTurn = true
+        )
+        // Live orientation readout
+        Row(
+            Modifier
+                .align(Alignment.TopEnd)
+                .padding(10.dp)
+                .clip(CircleShape)
+                .background(Color(0xCC07111F))
+                .padding(horizontal = 10.dp, vertical = 5.dp)
+                .clearAndSetSemantics {
+                    contentDescription = "Rotation ${normalizeDeg(yaw.value).roundToInt() % 360}°" +
+                        if (tilt.value >= 1f) ", tilt ${tilt.value.roundToInt()}°" else ""
+                },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            Icon(Icons.Rounded._360, contentDescription = null, tint = Brand.Mint, modifier = Modifier.size(14.dp))
+            Text("${normalizeDeg(yaw.value).roundToInt() % 360}°", style = MaterialTheme.typography.labelMedium, color = Color.White)
+            if (tilt.value >= 1f) {
+                Text("· tilt ${tilt.value.roundToInt()}°", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.75f))
+            }
+        }
+        // First-use hint (top-left, clear of the figure), gone after the first rotation
+        if (!touched) {
+            Row(
+                Modifier
+                    .align(Alignment.TopStart)
+                    .padding(10.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color(0xCC07111F))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(Icons.Rounded.SwipeLeft, contentDescription = null, tint = Brand.Mint, modifier = Modifier.size(18.dp))
+                Column {
+                    Text("Drag to rotate 360°", style = MaterialTheme.typography.labelMedium, color = Color.White)
+                    Text("Two fingers to tilt", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.7f))
+                }
+            }
         }
     }
 }
