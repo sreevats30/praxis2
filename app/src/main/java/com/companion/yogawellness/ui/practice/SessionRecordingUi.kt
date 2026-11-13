@@ -111,7 +111,7 @@ fun SessionReceiptDialog(receipt: SessionReceipt, onViewHistory: () -> Unit, onK
                 )
             }
         },
-        confirmButton = { TextButton(onClick = onViewHistory) { Text("Done") } },
+        confirmButton = { TextButton(onClick = onViewHistory) { Text("View History") } },
         dismissButton = { TextButton(onClick = onKeepPractising) { Text("Keep practising") } }
     )
 }

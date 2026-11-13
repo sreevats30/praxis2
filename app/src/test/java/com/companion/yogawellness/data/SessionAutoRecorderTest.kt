@@ -12,6 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -160,5 +161,50 @@ class SessionAutoRecorderTest {
         callerScope.cancel()
         r.awaitPendingWrites()
         assertEquals(1, sessions().size)
+    }
+}
+
+/**
+ * Deterministic regression for an ordering race found in testing: two writes launched in order can
+ * acquire the mutex in reverse order on a multi-threaded dispatcher. Here a dispatcher runs queued
+ * tasks newest-first, forcing that inversion; the stale (older) snapshot must not overwrite the
+ * newer one. Plain JVM, fake store.
+ */
+class SessionAutoRecorderOrderingTest {
+
+    private class LifoExecutor : java.util.concurrent.Executor {
+        val queue = ArrayDeque<Runnable>()
+        override fun execute(command: Runnable) { queue.addLast(command) }
+        fun runAllNewestFirst() { while (queue.isNotEmpty()) queue.removeLast().run() }
+    }
+
+    private class FakeStore : LiveSessionStore {
+        val rows = linkedMapOf<Long, Double>()
+        override suspend fun upsertLiveSession(
+            sessionId: Long?, segments: List<PoseSegmentStats>, poseStartedAtMs: Map<AsanaLabel, Long>,
+            startedAtMs: Long, endedAtMs: Long, epochDay: Long, toleranceProfile: String
+        ): Long? {
+            val active = com.companion.yogawellness.wellness.SessionSummarizer.qualifying(segments).sumOf { it.lockedSec }
+            val id = sessionId ?: (rows.size + 1L)
+            rows[id] = active
+            return id
+        }
+    }
+
+    @Test
+    fun olderSnapshotNeverOverwritesNewer() {
+        val exec = LifoExecutor()
+        val store = FakeStore()
+        val scope = CoroutineScope(SupervisorJob() + exec.asCoroutineDispatcher())
+        val warrior = AsanaLabel(Asana.VIRABHADRASANA_II, PoseSide.FRONT_LEFT)
+        fun seg(locked: Double) = PoseSegmentStats(warrior, locked, 1, 50.0, 0.0, 0.0, null)
+        val r = SessionAutoRecorder(store, scope, clock = { 0L }, sampleEveryMs = 0, log = { _, _ -> })
+
+        r.tick({ listOf(seg(4.0)) }, "STANDARD")                    // write #1 (older)
+        r.finalizeAndRotate(listOf(seg(6.0)), "STANDARD")          // write #2 (newer)
+        exec.runAllNewestFirst()                                   // #2 runs first, then #1
+
+        assertEquals(mapOf(1L to 6.0), store.rows)
+        scope.cancel()
     }
 }

@@ -36,8 +36,10 @@ data class SessionReceipt(val poses: List<ReceiptPose>, val totalSec: Double, va
  *    [SessionSummarizer.MIN_POSE_LOCK_SEC]; empty sessions are never written.
  *  - **Idempotent:** the first qualifying checkpoint inserts the session; later ones update that
  *    same row and replace its pose rows ([LiveSessionStore.upsertLiveSession]).
- *  - **Serialised:** one [Mutex] guards all DB work, so a checkpoint and a finalize can never
- *    interleave or create two rows.
+ *  - **Serialised and ordered:** one [Mutex] guards all DB work, so a checkpoint and a finalize
+ *    can never interleave or create two rows; and every write carries a per-session sequence
+ *    number, so an older snapshot that reaches the mutex late can never overwrite a newer one
+ *    (launch order on a multi-threaded dispatcher is not lock-acquisition order).
  *  - **Capture now, write later:** state is snapshotted synchronously on the caller's thread and
  *    written on [scope] (the app-level scope), so the camera thread never touches the database
  *    and cancelling a screen's scope cannot cancel a write.
@@ -58,12 +60,15 @@ class SessionAutoRecorder(
     /** REC badge state. */
     data class Rec(val active: Boolean = false, val elapsedSec: Int = 0, val posesSaved: Int = 0)
 
-    /** One recording session. [dbId] is only read/written under [writeMutex]. */
+    /** One recording session. [dbId] and [writtenSeq] are only touched under [writeMutex]. */
     private class Handle {
         var startedAtMs = -1L
         var activeSinceMs = -1L
         var dbId: Long? = null
+        /** Sequence number of the last scheduled write (under `lock`). */
         var writesScheduled = 0
+        /** Sequence number of the newest snapshot already in the database. */
+        var writtenSeq = 0
         val poseStartedAt = HashMap<AsanaLabel, Long>()
     }
 
@@ -190,7 +195,7 @@ class SessionAutoRecorder(
     ) {
         lastCheckpointMs = endedAtMs
         retryNeeded = false
-        h.writesScheduled++
+        val seq = ++h.writesScheduled
         val starts = HashMap(h.poseStartedAt)
         val startedAt = h.startedAtMs
         val posesSaved = SessionSummarizer.qualifying(segments).size
@@ -199,10 +204,13 @@ class SessionAutoRecorder(
             val attempts = if (final) 3 else 1
             for (attempt in 1..attempts) {
                 val ok = writeMutex.withLock {
+                    // A newer snapshot of this session is already stored: this one is stale.
+                    if (seq <= h.writtenSeq) return@withLock true
                     try {
                         h.dbId = store.upsertLiveSession(
                             h.dbId, segments, starts, startedAt, endedAtMs, epochDayOf(startedAt), toleranceProfile
                         )
+                        h.writtenSeq = seq
                         true
                     } catch (e: CancellationException) {
                         throw e
@@ -213,7 +221,7 @@ class SessionAutoRecorder(
                 }
                 if (ok) {
                     synchronized(lock) {
-                        if (h === handle) _rec.value = _rec.value.copy(posesSaved = posesSaved)
+                        if (h === handle && seq == h.writtenSeq) _rec.value = _rec.value.copy(posesSaved = posesSaved)
                     }
                     break
                 }
