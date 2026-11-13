@@ -102,7 +102,7 @@ private fun f0(v: Double) = String.format(Locale.US, "%.0f", v)
 private fun f1(v: Double) = String.format(Locale.US, "%.1f", v)
 
 @Composable
-fun WellnessDashboardScreen(onBack: () -> Unit, vm: DashboardViewModel = viewModel()) {
+fun WellnessDashboardScreen(onBack: (() -> Unit)? = null, vm: DashboardViewModel = viewModel()) {
     val profileData by vm.profileData.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var error by remember { mutableStateOf<String?>(null) }
@@ -132,7 +132,7 @@ fun DashboardScreenContent(
     data: DashboardData?,
     demoLabel: String?,
     error: String?,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onExport: () -> Unit,
     profiles: @Composable () -> Unit = {}
 ) {

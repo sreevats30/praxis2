@@ -167,8 +167,8 @@ class ScreenRenderTest {
         val out = warriorOutput(95.0)
         val rec = com.companion.yogawellness.data.SessionAutoRecorder.Rec(active = true, elapsedSec = 42, posesSaved = 2)
         setScreen {
+            // The REC badge is part of the bottom panel's recording strip (one badge on screen).
             Box(Modifier.fillMaxSize().background(Color(0xFF30363A))) {
-                com.companion.yogawellness.ui.practice.RecBadge(rec, Modifier.align(Alignment.TopEnd).padding(16.dp))
                 BottomPanel(
                     PracticeUiState(output = out, modelReady = true, rec = rec),
                     onExplain = {},
@@ -187,7 +187,7 @@ class ScreenRenderTest {
         setScreen {
             BottomPanel(PracticeUiState(output = null, modelReady = true), onExplain = {}, modifier = Modifier.fillMaxWidth(), onFinish = {})
         }
-        compose.onNodeWithText("∑ Explain Score").assertExists()
+        compose.onNodeWithContentDescription("Explain Score").assertExists()
         compose.onNodeWithText("Finish & Save").assertDoesNotExist()
     }
 
@@ -280,7 +280,7 @@ class ScreenRenderTest {
             }
         }
         compose.onNodeWithText("Viewing demo data (Demo A · Consistent). Your own data is safe.").assertExists()
-        compose.onNodeWithText("👤 My Account").assertExists()
+        compose.onNodeWithText("My Account").assertExists() // chip text; the person icon replaced the emoji
         org.junit.Assert.assertEquals(1, compose.onAllNodesWithText("Back to My Account").fetchSemanticsNodes().size)
         save("profile_selector_demo_banner")
     }

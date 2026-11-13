@@ -207,8 +207,6 @@ fun PracticeScreen(
                 }
             }
             targetAsana?.let { TargetChip(it) }
-            // Own line: the top row has no room for it on a 360 dp phone.
-            if (state.rec.active && !state.isReplaying) RecBadge(state.rec)
             if (showSafety) SafetyBanner { showSafety = false }
             state.replayName?.let { ReplayBanner(it, vm::stopReplay) }
             state.recordingSec?.let { HudPill(String.format(Locale.US, "Recording landmarks %.0f / 20 s", it), Icons.Rounded.FiberManualRecord, ScoreColors.Red) }
@@ -493,6 +491,13 @@ internal fun BottomPanel(
         modifier = modifier
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            // Recording status and its action share one slim strip (only while a live session runs).
+            if (onFinish != null && state.rec.active && !state.isReplaying) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    RecBadge(state.rec, Modifier.weight(1f), compact = true)
+                    FinishChip(onFinish)
+                }
+            }
             val label = out?.lockedLabel
             when {
                 !state.modelReady && state.error == null -> StatusRow(
@@ -554,16 +559,17 @@ internal fun BottomPanel(
             // The coach usually speaks the cue already on screen; show its caption only when it adds something.
             val shown = if (label != null && label.asana != Asana.TADASANA) scoredMessage(out) else null
             state.caption?.takeIf { it.text != shown }?.let { CoachCaption(it) }
-            // Shown once a live session is running (calibrated or a pose locked).
-            if (onFinish != null && state.rec.active && !state.isReplaying) {
-                GradientButton(
-                    "Finish & Save", onFinish, Modifier.fillMaxWidth(),
-                    icon = Icons.Rounded.CheckCircle,
-                    brush = Brush.horizontalGradient(listOf(Brand.Mint, Brand.Cyan)),
-                    contentColor = Brand.Navy900,
-                    height = 46.dp
-                )
-            }
+        }
+    }
+}
+
+/** Compact "Finish & Save" action that closes the session and shows its receipt. */
+@Composable
+private fun FinishChip(onClick: () -> Unit) {
+    Surface(onClick = onClick, shape = CircleShape, color = Brand.Mint, contentColor = Brand.Navy900, modifier = Modifier.height(36.dp)) {
+        Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Icon(Icons.Rounded.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+            Text("Finish & Save", style = MaterialTheme.typography.labelLarge)
         }
     }
 }

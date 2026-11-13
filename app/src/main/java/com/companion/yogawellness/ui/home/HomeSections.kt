@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Lock
@@ -488,19 +489,19 @@ private fun Sparklines(mood: List<Int?>, stress: List<Int?>) {
 // ---------------------------------------------------------------------------------------------
 
 @Composable
-internal fun PoseCarousel() {
+internal fun PoseCarousel(onPose: (Asana) -> Unit = {}) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(Asana.entries.toList()) { PoseCard(it) }
+        items(Asana.entries.toList()) { a -> PoseCard(a) { onPose(a) } }
     }
 }
 
 @Composable
-private fun PoseCard(asana: Asana) {
+private fun PoseCard(asana: Asana, onClick: () -> Unit) {
     val c = AppTheme.colors
-    PanelCard(Modifier.width(184.dp), contentPadding = PaddingValues(10.dp), spacing = 10.dp, elevation = 6.dp) {
+    PanelCard(Modifier.width(184.dp), onClick = onClick, contentPadding = PaddingValues(10.dp), spacing = 10.dp, elevation = 6.dp) {
         Box(
             Modifier
                 .fillMaxWidth()
@@ -534,6 +535,32 @@ private fun PoseCard(asana: Asana) {
                 maxLines = 3,
                 minLines = 3
             )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Learn this pose", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Practice history
+// ---------------------------------------------------------------------------------------------
+
+@Composable
+internal fun HistoryCard(onOpen: () -> Unit) {
+    PanelCard(onClick = onOpen, spacing = 8.dp, elevation = 6.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            IconBadge(Icons.Rounded.History, Brand.Practice, size = 44.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Practice history", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    "Every pose you hold for 2 seconds is saved, with its alignment, hold time and top coaching cue.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = AppTheme.colors.inkMuted
+                )
+            }
+            Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = "Open history", tint = MaterialTheme.colorScheme.primary)
         }
     }
 }

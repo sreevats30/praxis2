@@ -153,7 +153,11 @@ Joint targets/tolerances live in `scoring/AsanaSpecs.kt`; classifier rules in
 | Personas | `wellness/MockPersonaSeeder.kt` |
 | Dashboard + PDF | `ui/dashboard/`, `wellness/DashboardBuilder.kt`, `report/PdfReportExporter.kt` |
 | Room storage | `data/db/`, `data/WellnessRepository.kt` |
-<<<<<<< HEAD
+| Profiles + demo data (v1.1) | `data/ProfileIds.kt`, `data/ActiveProfile.kt`, `data/ProfileSwitcher.kt`, `ui/profile/` |
+| Room 1→2 migration | `data/db/WellnessDatabase.kt` (`MIGRATION_1_2`), `app/schemas/` |
+| Session auto-recording | `data/SessionAutoRecorder.kt`, `wellness/DailyAggregator.kt` (`SessionSummarizer`) |
+| History | `ui/history/`, `wellness/HistoryAggregator.kt` |
+| Learn / Asana Codex | `codex/` (rig, solver, timeline, 32-pose catalog), `ui/codex/` |
 | Design system (colours, type, shapes) | `ui/theme/Theme.kt`, `ui/theme/Type.kt` |
 | Shared UI components + artwork | `ui/components/Clinical.kt`, `ui/components/Artwork.kt` |
 | Home summary (streak, week, sparklines) | `wellness/ActivitySummary.kt`, `ui/home/` |
@@ -170,13 +174,6 @@ Joint targets/tolerances live in `scoring/AsanaSpecs.kt`; classifier rules in
   `HeroDecor`, `PulseLine` (animated ECG trace), `BrandMark` and `PoseGlyph` (keypoint-style figure for each asana).
 - **Screenshots**: `./gradlew :app:testDebugUnitTest --tests '*ScreenRenderTest*'` renders every screen (including
   full-length, demo-data and dark-mode variants) to `app/build/screenshots/`.
-=======
-| Profiles + demo data (v1.1) | `data/ProfileIds.kt`, `data/ActiveProfile.kt`, `data/ProfileSwitcher.kt`, `ui/profile/` |
-| Room 1→2 migration | `data/db/WellnessDatabase.kt` (`MIGRATION_1_2`), `app/schemas/` |
-| Session auto-recording | `data/SessionAutoRecorder.kt`, `wellness/DailyAggregator.kt` (`SessionSummarizer`) |
-| History | `ui/history/`, `wellness/HistoryAggregator.kt` |
-| Learn / Asana Codex | `codex/` (rig, solver, timeline, 32-pose catalog), `ui/codex/` |
->>>>>>> origin/claude/intelligent-maxwell-0cqtmh
 
 ## Deliberate deviations from the blueprint
 

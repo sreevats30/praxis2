@@ -45,6 +45,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.companion.yogawellness.data.db.DailyCheckInEntity
 import com.companion.yogawellness.data.db.QuestionnaireEntity
+import com.companion.yogawellness.scoring.Asana
 import com.companion.yogawellness.scoring.ToleranceProfile
 import com.companion.yogawellness.ui.components.BrandMark
 import com.companion.yogawellness.ui.components.GlassIconButton
@@ -53,6 +54,7 @@ import com.companion.yogawellness.ui.components.HeroDecor
 import com.companion.yogawellness.ui.components.PulseLine
 import com.companion.yogawellness.ui.components.Reveal
 import com.companion.yogawellness.ui.components.SectionHeader
+import com.companion.yogawellness.ui.profile.DemoBannerBar
 import com.companion.yogawellness.ui.theme.AppTheme
 import com.companion.yogawellness.ui.wellness.WellnessViewModel
 import com.companion.yogawellness.wellness.ActivitySummary
@@ -72,6 +74,9 @@ fun HomeScreen(
     onQuestionnaire: (QuestionnaireType) -> Unit = {},
     onDashboard: () -> Unit = {},
     onSettings: () -> Unit = {},
+    onHistory: () -> Unit = {},
+    /** Opens the Learn-tab page for a pose card. */
+    onPose: (Asana) -> Unit = {},
     vm: WellnessViewModel = viewModel()
 ) {
     val today by vm.todayCheckIn.collectAsStateWithLifecycle()
@@ -86,7 +91,10 @@ fun HomeScreen(
         onCheckIn = onCheckIn,
         onQuestionnaire = onQuestionnaire,
         onDashboard = onDashboard,
-        onSettings = onSettings
+        onSettings = onSettings,
+        onHistory = onHistory,
+        onPose = onPose,
+        banner = { DemoBannerBar() }
     )
 }
 
@@ -108,7 +116,11 @@ fun HomeContent(
     onCheckIn: () -> Unit,
     onQuestionnaire: (QuestionnaireType) -> Unit,
     onDashboard: () -> Unit,
-    onSettings: () -> Unit
+    onSettings: () -> Unit,
+    onHistory: () -> Unit = {},
+    onPose: (Asana) -> Unit = {},
+    /** Shown above the cards, e.g. the "viewing demo data" banner. */
+    banner: @Composable () -> Unit = {}
 ) {
     val scroll = rememberScrollState()
     val h = Modifier.padding(horizontal = 16.dp)
@@ -122,9 +134,20 @@ fun HomeContent(
         Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
             HomeHero(onSettings)
             Column(Modifier.pullUp(64.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                Reveal(0, h) { TodayCard(state.today, activity, onCheckIn) }
+                Reveal(0, h) {
+                    // The banner emits nothing unless a demo is being viewed, so it adds no gap.
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        banner()
+                        TodayCard(state.today, activity, onCheckIn)
+                    }
+                }
                 Reveal(1, h) { PracticeLaunchCard(state.profile, onProfile, onStartPractice) }
-                Reveal(2, h) { WeekMetrics(activity) }
+                Reveal(2, h) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        WeekMetrics(activity)
+                        HistoryCard(onHistory)
+                    }
+                }
                 Reveal(3, h) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         SectionHeader("Mind & mood", overline = "Fortnightly self-reflection")
@@ -136,7 +159,7 @@ fun HomeContent(
                 Reveal(5) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         SectionHeader("Pose library", h, overline = "Tracked & scored live")
-                        PoseCarousel()
+                        PoseCarousel(onPose)
                     }
                 }
                 Reveal(6, h) { PrivacyFooter(onSettings) }

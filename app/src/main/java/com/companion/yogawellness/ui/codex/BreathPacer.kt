@@ -49,6 +49,7 @@ fun BreathPacer(pattern: BreathPattern, time: FloatState, modifier: Modifier = M
             val level = PoseTimeline.breathLevel(time.floatValue, pattern) // -1 empty … +1 full
             val maxR = size.minDimension / 2f
             drawCircle(track, maxR)
+            drawCircle(ring.copy(alpha = 0.25f), maxR * (0.62f + 0.38f * (level + 1f) / 2f) + 6f)
             drawCircle(ring.copy(alpha = 0.85f), maxR * (0.55f + 0.45f * (level + 1f) / 2f))
             drawCircle(Color.White.copy(alpha = 0.9f), maxR * 0.12f)
         }
