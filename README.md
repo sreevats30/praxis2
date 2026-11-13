@@ -80,10 +80,11 @@ and Settings open full-screen without the bar.
   session. **Finish & Save** shows a receipt, and **View History** opens the saved session. Replays are never
   recorded.
 - **History** lists every session, newest first: duration, alignment and stability, per-pose hold times, the worst
-  joint and the coaching cue. You can delete a session (with confirmation) or **log manual practice** (minutes only,
-  with no score and no pose rows, so your alignment analytics are never inflated).
-- **Demo profiles:** the profile chips on Insights and History switch between **👤 My Account** and three
-  synthetic personas (Demo A · Consistent, Demo B · Exam Gap, Demo C · Null Pattern). A persona is generated the first
+  joint and the coaching cue. You can delete a session (with confirmation). Sessions logged by hand in older
+  versions still show a **Manual** tag.
+- **Demo profiles:** after loading demo data in **Settings → Demo data**, profile chips on Insights and History switch
+  between **My Account** and three synthetic personas (Demo A · Consistent, Demo B · Exam Gap, Demo C · Null Pattern).
+  A new account shows no chips and no demo data. A persona is generated the first
   time you view it and stored **beside** your data, never instead of it. While a demo is shown, an amber banner
   reads *"Viewing demo data (…). Your own data is safe."* with **Back to My Account**. Exported PDFs of a demo
   are labelled DEMO DATA. Anything you record (practice, check-ins, questionnaires) always goes to My Account.
