@@ -17,6 +17,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -148,6 +149,49 @@ class ScreenRenderTest {
         }
         compose.onNodeWithText(com.companion.yogawellness.feedback.SafetyGuards.TREE_KNEE_MESSAGE).assertExists()
         save("practice_tree_knee_guard")
+    }
+
+    @Test
+    fun bottomPanelFinishAndSaveAndRecBadge() {
+        val out = warriorOutput(95.0)
+        val rec = com.companion.yogawellness.data.SessionAutoRecorder.Rec(active = true, elapsedSec = 42, posesSaved = 2)
+        setScreen {
+            Box(Modifier.fillMaxSize().background(Color(0xFF30363A))) {
+                com.companion.yogawellness.ui.practice.RecBadge(rec, Modifier.align(Alignment.TopEnd).padding(16.dp))
+                BottomPanel(
+                    PracticeUiState(output = out, modelReady = true, rec = rec),
+                    onExplain = {},
+                    modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(10.dp),
+                    onFinish = {}
+                )
+            }
+        }
+        compose.onNodeWithText("Finish & Save").assertExists()
+        compose.onNodeWithContentDescription("Recording session, 42 seconds, 2 poses saved").assertExists()
+        save("practice_finish_and_rec")
+    }
+
+    @Test
+    fun bottomPanelWithoutFinishBeforeASessionStarts() {
+        setScreen {
+            BottomPanel(PracticeUiState(output = null, modelReady = true), onExplain = {}, modifier = Modifier.fillMaxWidth(), onFinish = {})
+        }
+        compose.onNodeWithText("∑ Explain Score").assertExists()
+        compose.onNodeWithText("Finish & Save").assertDoesNotExist()
+    }
+
+    @Test
+    fun sessionReceiptDialog() {
+        val receipt = com.companion.yogawellness.data.SessionReceipt(
+            poses = listOf(
+                com.companion.yogawellness.data.ReceiptPose("Virabhadrasana II (Warrior II)", "Left leg forward", 12.4, 9.1, 86.0),
+                com.companion.yogawellness.data.ReceiptPose("Utkatasana (Chair Pose)", null, 3.0, 0.0, 52.0)
+            ),
+            totalSec = 15.4, meanScore = 79.4
+        )
+        setScreen { com.companion.yogawellness.ui.practice.SessionReceiptDialog(receipt, onViewHistory = {}, onKeepPractising = {}) }
+        compose.onNodeWithText("Virabhadrasana II · Left leg forward — 12.4 s held, 9.1 s at ≥75%, 86% alignment").assertExists()
+        compose.onNodeWithText("Keep practising").assertExists()
     }
 
     @Test

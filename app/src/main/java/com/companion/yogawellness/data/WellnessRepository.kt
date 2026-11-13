@@ -1,6 +1,7 @@
 package com.companion.yogawellness.data
 
 import androidx.room.withTransaction
+import com.companion.yogawellness.classifier.AsanaLabel
 import com.companion.yogawellness.data.db.DailyCheckInEntity
 import com.companion.yogawellness.data.db.PoseRecordEntity
 import com.companion.yogawellness.data.db.PracticeSessionEntity
@@ -29,7 +30,7 @@ class WellnessRepository(
     /** Directories wiped by "Delete All My Data" (pose clips, exported reports). */
     private val privateDirs: List<File>,
     private val clock: () -> Long = System::currentTimeMillis
-) {
+) : LiveSessionStore {
     // ---- Daily check-in ---------------------------------------------------------------------
     fun observeCheckIn(epochDay: Long, profileId: String): Flow<DailyCheckInEntity?> =
         db.checkIns().observeDay(epochDay, profileId)
@@ -68,6 +69,39 @@ class WellnessRepository(
     ): Long? {
         val (session, poses) = SessionSummarizer.toEntities(segments, startedAtMs, endedAtMs, epochDay, profile) ?: return null
         return db.sessions().insertWithPoses(session.copy(profileId = ProfileIds.MY_ACCOUNT), poses)
+    }
+
+    /**
+     * Idempotent checkpoint of the live session (Phase 2): inserts it on the first call
+     * ([sessionId] == null) and afterwards updates the same row and replaces its pose rows, all in
+     * one transaction. Always My Account. Returns the session id, or [sessionId] unchanged if no
+     * pose qualifies yet (no empty sessions are ever written).
+     */
+    override suspend fun upsertLiveSession(
+        sessionId: Long?,
+        segments: List<PoseSegmentStats>,
+        poseStartedAtMs: Map<AsanaLabel, Long>,
+        startedAtMs: Long,
+        endedAtMs: Long,
+        epochDay: Long,
+        toleranceProfile: String
+    ): Long? {
+        val (session, poses) = SessionSummarizer.toEntities(
+            segments, startedAtMs, endedAtMs, epochDay, toleranceProfile, poseStartedAtMs
+        ) ?: return sessionId
+        val mine = session.copy(profileId = ProfileIds.MY_ACCOUNT)
+        return db.withTransaction {
+            val updated = sessionId != null &&
+                db.sessions().updateLiveSession(sessionId, mine.endedAtMs, mine.activeSec, mine.meanScore) > 0
+            if (updated) {
+                db.sessions().deletePosesFor(sessionId!!)
+                db.sessions().insertPoses(poses.map { it.copy(sessionId = sessionId) })
+                sessionId
+            } else {
+                // First checkpoint (or the row was deleted from History meanwhile): insert afresh.
+                db.sessions().insertWithPoses(mine, poses)
+            }
+        }
     }
 
     // ---- Questionnaires -----------------------------------------------------------------------

@@ -79,6 +79,16 @@ interface SessionDao {
     @Query("SELECT COUNT(*) FROM practice_sessions WHERE profileId = :profileId")
     suspend fun count(profileId: String): Int
 
+    /** Live-session checkpoint: only My Account sessions are ever updated. Returns rows changed. */
+    @Query(
+        "UPDATE practice_sessions SET endedAtMs = :endedAtMs, activeSec = :activeSec, meanScore = :meanScore " +
+            "WHERE id = :sessionId AND profileId = 'MY_ACCOUNT'"
+    )
+    suspend fun updateLiveSession(sessionId: Long, endedAtMs: Long, activeSec: Double, meanScore: Double?): Int
+
+    @Query("DELETE FROM pose_records WHERE sessionId = :sessionId")
+    suspend fun deletePosesFor(sessionId: Long)
+
     /** Pose rows go with it (ON DELETE CASCADE). */
     @Query("DELETE FROM practice_sessions WHERE id = :sessionId AND profileId = :profileId")
     suspend fun deleteSession(sessionId: Long, profileId: String)
