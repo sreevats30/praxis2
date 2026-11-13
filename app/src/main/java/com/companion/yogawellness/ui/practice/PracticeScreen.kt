@@ -68,10 +68,18 @@ import com.companion.yogawellness.pose.PreflightResult
 import com.companion.yogawellness.scoring.Asana
 import com.companion.yogawellness.scoring.CameraAngle
 import com.companion.yogawellness.ui.theme.ScoreColors
+import com.companion.yogawellness.data.SessionAutoRecorder
+import com.companion.yogawellness.data.SessionReceipt
 import java.util.Locale
 
 @Composable
-fun PracticeScreen(onBack: () -> Unit, vm: PracticeViewModel = viewModel()) {
+fun PracticeScreen(
+    onBack: () -> Unit,
+    onFinished: () -> Unit = onBack,
+    /** Optional hint from the Learn tab. Display only: never changes classification, locking or scoring. */
+    targetAsana: Asana? = null,
+    vm: PracticeViewModel = viewModel()
+) {
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var hasCamera by remember {
@@ -92,7 +100,11 @@ fun PracticeScreen(onBack: () -> Unit, vm: PracticeViewModel = viewModel()) {
 
     LifecycleStartEffect(vm) {
         vm.onStart()
-        onStopOrDispose { vm.onStop() }
+        onStopOrDispose {
+            vm.onStop()
+            // ON_STOP (Home, screen lock, app switch): persist the session so far.
+            vm.checkpointNow()
+        }
     }
 
     Box(
@@ -152,6 +164,9 @@ fun PracticeScreen(onBack: () -> Unit, vm: PracticeViewModel = viewModel()) {
                 OverlayIconButton({ showReplayPicker = true }) { Icon(Icons.Default.Replay, contentDescription = "Replay a clip") }
                 OverlayIconButton(vm::toggleCamera) { Icon(Icons.Default.Cameraswitch, contentDescription = "Switch camera") }
             }
+            targetAsana?.let { TargetChip(it) }
+            // Own line: the top row has no room for it on a 360 dp phone.
+            if (state.rec.active && !state.isReplaying) RecBadge(state.rec)
             if (showSafety) SafetyBanner { showSafety = false }
             state.replayName?.let { ReplayBanner(it, vm::stopReplay) }
             state.recordingSec?.let { InfoPill(String.format(Locale.US, "● Recording landmarks %.0f / 20 s", it)) }
@@ -164,6 +179,8 @@ fun PracticeScreen(onBack: () -> Unit, vm: PracticeViewModel = viewModel()) {
         BottomPanel(
             state = state,
             onExplain = { showExplain = true },
+            onFinish = vm::finishAndSave,
+            targetAsana = targetAsana,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
@@ -174,6 +191,13 @@ fun PracticeScreen(onBack: () -> Unit, vm: PracticeViewModel = viewModel()) {
 
     if (showExplain) {
         ExplainScoreSheet(state.output, state.profile) { showExplain = false }
+    }
+    state.receipt?.let { receipt ->
+        SessionReceiptDialog(
+            receipt = receipt,
+            onViewHistory = { vm.clearReceipt(); onFinished() },
+            onKeepPractising = vm::clearReceipt
+        )
     }
     if (showReplayPicker) {
         ReplayPickerDialog(
@@ -311,7 +335,13 @@ private fun CameraPermissionPrompt(modifier: Modifier, onRequest: () -> Unit) {
 }
 
 @Composable
-internal fun BottomPanel(state: PracticeUiState, onExplain: () -> Unit, modifier: Modifier) {
+internal fun BottomPanel(
+    state: PracticeUiState,
+    onExplain: () -> Unit,
+    modifier: Modifier,
+    onFinish: (() -> Unit)? = null,
+    targetAsana: Asana? = null
+) {
     val out = state.output
     Surface(color = Color.Black.copy(alpha = 0.62f), shape = RoundedCornerShape(18.dp), modifier = modifier) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -325,6 +355,8 @@ internal fun BottomPanel(state: PracticeUiState, onExplain: () -> Unit, modifier
                     if (cand != null && out.lock.candidateProgress > 0.3) {
                         PanelText("Detecting ${cand.asana.sanskritName}…", bold = true)
                         LinearProgressIndicator(progress = { out.lock.candidateProgress.toFloat() }, modifier = Modifier.fillMaxWidth())
+                    } else if (targetAsana != null) {
+                        PanelText(targetHint(targetAsana))
                     } else {
                         PanelText("Move into a pose: Vrikshasana, Virabhadrasana II, Trikonasana, or Utkatasana (turn 45°/side-on for Chair).")
                     }
@@ -342,8 +374,30 @@ internal fun BottomPanel(state: PracticeUiState, onExplain: () -> Unit, modifier
             state.caption?.let { CoachCaption(it) }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilledTonalButton(onClick = onExplain) { Text("∑ Explain Score") }
+                // Shown once a live session is running (calibrated or a pose locked).
+                if (onFinish != null && state.rec.active && !state.isReplaying) {
+                    Button(onClick = onFinish) { Text("Finish & Save") }
+                }
             }
         }
+    }
+}
+
+/** Idle-panel hint for a target chosen in the Learn tab (all four poses are still detected). */
+fun targetHint(target: Asana): String =
+    "Move into ${target.displayName} when ready" +
+        (if (target.cameraAngle == CameraAngle.SIDE_OR_45) " (${target.cameraAngle.instruction.lowercase()})" else "") +
+        ". Any of the four poses is still detected."
+
+@Composable
+private fun TargetChip(target: Asana) {
+    Surface(color = Color(0xE60F5257), shape = RoundedCornerShape(50)) {
+        Text(
+            "Target: ${target.englishName}",
+            color = Color.White,
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+        )
     }
 }
 

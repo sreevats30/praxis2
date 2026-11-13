@@ -30,6 +30,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.companion.yogawellness.data.ProfileIds
 import com.companion.yogawellness.ui.consent.NON_DIAGNOSTIC_STATEMENT
 import com.companion.yogawellness.ui.wellness.WellnessViewModel
 import com.companion.yogawellness.wellness.Persona
@@ -39,7 +41,8 @@ import com.companion.yogawellness.wellness.Persona
 fun SettingsScreen(onBack: () -> Unit, onDataDeleted: () -> Unit, vm: WellnessViewModel = viewModel()) {
     var confirmDelete by remember { mutableStateOf(false) }
     var confirmPersona by remember { mutableStateOf<Persona?>(null) }
-    var loadedPersona by remember { mutableStateOf(vm.prefs.demoPersona) }
+    var confirmRemoveDemo by remember { mutableStateOf(false) }
+    val viewing by vm.activeProfileId.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -72,13 +75,15 @@ fun SettingsScreen(onBack: () -> Unit, onDataDeleted: () -> Unit, vm: WellnessVi
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Demo data", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "Load 42 days of synthetic data to explore the dashboard. This replaces all stored data." +
-                            (loadedPersona?.let { name -> "\nLoaded: " + (Persona.entries.firstOrNull { it.name == name }?.label ?: name) } ?: ""),
+                        "Load 42 days of synthetic data to explore the dashboard and history. " +
+                            "Adds synthetic data you can browse. Your own data is not changed.",
                         style = MaterialTheme.typography.bodySmall
                     )
+                    Text("Viewing: ${ProfileIds.displayName(viewing)}", style = MaterialTheme.typography.bodySmall)
                     Persona.entries.forEach { p ->
                         OutlinedButton(onClick = { confirmPersona = p }, modifier = Modifier.fillMaxWidth()) { Text(p.label) }
                     }
+                    TextButton(onClick = { confirmRemoveDemo = true }, modifier = Modifier.fillMaxWidth()) { Text("Remove demo data") }
                 }
             }
 
@@ -114,14 +119,25 @@ fun SettingsScreen(onBack: () -> Unit, onDataDeleted: () -> Unit, vm: WellnessVi
         AlertDialog(
             onDismissRequest = { confirmPersona = null },
             title = { Text("Load ${p.label}?") },
-            text = { Text(p.description + "\n\nAll currently stored data will be replaced.") },
+            text = { Text(p.description + "\n\nYour own data is not affected.") },
             confirmButton = {
                 TextButton(onClick = {
                     confirmPersona = null
-                    vm.loadPersona(p) { loadedPersona = p.name }
+                    vm.loadPersona(p) {}
                 }) { Text("Load") }
             },
             dismissButton = { TextButton(onClick = { confirmPersona = null }) { Text("Cancel") } }
+        )
+    }
+    if (confirmRemoveDemo) {
+        AlertDialog(
+            onDismissRequest = { confirmRemoveDemo = false },
+            title = { Text("Remove demo data?") },
+            text = { Text("Removes the three synthetic personas. Your own data is not affected.") },
+            confirmButton = {
+                TextButton(onClick = { confirmRemoveDemo = false; vm.removeDemoData {} }) { Text("Remove") }
+            },
+            dismissButton = { TextButton(onClick = { confirmRemoveDemo = false }) { Text("Cancel") } }
         )
     }
 }

@@ -1,5 +1,6 @@
 package com.companion.yogawellness.wellness
 
+import com.companion.yogawellness.classifier.AsanaLabel
 import com.companion.yogawellness.data.db.DailyCheckInEntity
 import com.companion.yogawellness.data.db.PoseRecordEntity
 import com.companion.yogawellness.data.db.PracticeSessionEntity
@@ -74,32 +75,50 @@ object DailyAggregator {
 
 /** Turns an in-memory practice session into database rows. */
 object SessionSummarizer {
-    /** Sessions with less scored time than this are not saved. */
-    const val MIN_ACTIVE_SEC = 5.0
+    /**
+     * A pose is kept if it stayed locked at least this long — whatever its score. A hesitant 40%
+     * Warrior II is real practice and must be recorded (v1.0 dropped whole sessions under 5 s).
+     */
+    const val MIN_POSE_LOCK_SEC = 2.0
 
+    /** The segments that qualify for saving. */
+    fun qualifying(segments: List<PoseSegmentStats>): List<PoseSegmentStats> =
+        segments.filter { it.label.asana.isScored && it.lockedSec >= MIN_POSE_LOCK_SEC }
+
+    /**
+     * @param poseStartedAtMs wall-clock time each pose first locked (from the session recorder)
+     * @return null only if no segment qualifies. Rows carry the default profileId; the repository
+     *         stamps My Account.
+     */
     fun toEntities(
         segments: List<PoseSegmentStats>,
         startedAtMs: Long,
         endedAtMs: Long,
         epochDay: Long,
-        profile: String
+        profile: String,
+        poseStartedAtMs: Map<AsanaLabel, Long> = emptyMap()
     ): Pair<PracticeSessionEntity, List<PoseRecordEntity>>? {
-        val scored = segments.filter { it.label.asana.isScored && it.lockedSec > 0 }
-        val active = scored.sumOf { it.lockedSec }
-        if (active < MIN_ACTIVE_SEC) return null
-        val withScore = scored.filter { it.meanScore != null }
+        val kept = qualifying(segments)
+        if (kept.isEmpty()) return null
+        val active = kept.sumOf { it.lockedSec }
+        val withScore = kept.filter { it.meanScore != null }
         val mean = if (withScore.isEmpty()) null
         else withScore.sumOf { it.meanScore!! * it.lockedSec } / withScore.sumOf { it.lockedSec }
         val session = PracticeSessionEntity(
             epochDay = epochDay, startedAtMs = startedAtMs, endedAtMs = endedAtMs,
             activeSec = active, meanScore = mean, profile = profile
         )
-        val poses = scored.map {
+        val poses = kept.map {
             PoseRecordEntity(
                 sessionId = 0, asana = it.label.asana.name, side = it.label.side.name,
                 lockedSec = it.lockedSec, meanScore = it.meanScore,
                 bestStrictHoldSec = it.bestStrictHoldSec, bestGraceHoldSec = it.bestGraceHoldSec,
-                meanStability = it.meanStability
+                meanStability = it.meanStability,
+                startedAtMs = poseStartedAtMs[it.label] ?: startedAtMs,
+                qualitySec = it.qualitySec,
+                peakScore = it.peakScore,
+                worstJoint = it.worstJoint,
+                topCue = it.topCue
             )
         }
         return session to poses

@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.companion.yogawellness.ui.profile.DemoBannerBar
 import com.companion.yogawellness.ui.wellness.WellnessViewModel
 import com.companion.yogawellness.ui.wellness.formatEpochDay
 import com.companion.yogawellness.wellness.QuestionnaireType
@@ -28,11 +29,14 @@ fun WellnessCards(
     onQuestionnaire: (QuestionnaireType) -> Unit,
     onSettings: () -> Unit,
     onDashboard: () -> Unit = {},
+    onHistory: () -> Unit = {},
     extra: @Composable () -> Unit = {}
 ) {
     val today by vm.todayCheckIn.collectAsStateWithLifecycle()
     val phq by vm.latestPhq.collectAsStateWithLifecycle()
     val gad by vm.latestGad.collectAsStateWithLifecycle()
+
+    DemoBannerBar()
 
     Card {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -65,6 +69,17 @@ fun WellnessCards(
                     OutlinedButton(onClick = { onQuestionnaire(type) }, modifier = Modifier.fillMaxWidth()) { Text("Start ${type.shortName}") }
                 }
             }
+        }
+    }
+
+    Card {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Practice history", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Every pose you hold for 2 seconds is saved, with its alignment, hold time and top coaching cue.",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Button(onClick = onHistory, modifier = Modifier.fillMaxWidth()) { Text("Open history") }
         }
     }
 

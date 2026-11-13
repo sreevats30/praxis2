@@ -47,6 +47,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.companion.yogawellness.ui.profile.DemoBannerBar
+import com.companion.yogawellness.ui.profile.ProfileSelectorBar
 import com.companion.yogawellness.ui.wellness.formatEpochDay
 import com.companion.yogawellness.wellness.DashboardData
 import com.companion.yogawellness.wellness.InsightCard
@@ -92,7 +94,8 @@ fun WellnessDashboardScreen(onBack: () -> Unit, vm: DashboardViewModel = viewMod
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            vm.personaLabel?.let { Text("Demo data: $it", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary) }
+            ProfileSelectorBar()
+            DemoBannerBar()
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             val d = data
             when {

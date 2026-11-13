@@ -63,7 +63,8 @@ class WellnessLogicTest {
     fun sessionSummarizerSkipsTinySessionsAndWeightsScores() {
         val tree = AsanaLabel(Asana.VRIKSHASANA, PoseSide.LEFT_LIFTED)
         val warrior = AsanaLabel(Asana.VIRABHADRASANA_II, PoseSide.FRONT_LEFT)
-        assertNull(SessionSummarizer.toEntities(listOf(PoseSegmentStats(tree, 3.0, 50, 80.0, 2.0, 2.0, 90.0)), 0, 1, 0, "STANDARD"))
+        // v1.1 rule: a pose is kept from 2.0 s locked (v1.0 dropped sessions under 5 s in total).
+        assertNull(SessionSummarizer.toEntities(listOf(PoseSegmentStats(tree, 1.9, 50, 80.0, 2.0, 2.0, 90.0)), 0, 1, 0, "STANDARD"))
         val (s, poses) = SessionSummarizer.toEntities(
             listOf(PoseSegmentStats(tree, 30.0, 700, 90.0, 20.0, 25.0, 85.0), PoseSegmentStats(warrior, 10.0, 250, 50.0, 2.0, 3.0, 70.0)),
             0, 60_000, 5, "BEGINNER"
