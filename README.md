@@ -63,7 +63,7 @@ in the repo root containing `sdk.dir=/path/to/Android/Sdk`.
 3. **Start practice** → prop the phone upright 2–3 m away. The pre-flight pills must all turn green
    (full body, distance, phone steady ≤15° tilt, lighting).
 4. Stand in **Tadasana** for 5 s → "Calibrated".
-5. **Warrior II with a shallow front knee (~125°)** → red 41% badge, curved arrow on the knee, voice:
+5. **Warrior II with a shallow front knee (~125°)** → red 41% score ring, curved arrow on the knee, voice:
    *"Bend your front knee deeper toward 90 degrees"*. Tap **∑ Explain Score** to show every term of the formula.
 6. Bend to ~95° → green, hold timer runs, chime + *"Beautiful. Hold it there."* after 4 s at ≥88%.
 7. Do the other side → left-vs-right symmetry. Back out → the session is saved.
@@ -111,6 +111,22 @@ Joint targets/tolerances live in `scoring/AsanaSpecs.kt`; classifier rules in
 | Personas | `wellness/MockPersonaSeeder.kt` |
 | Dashboard + PDF | `ui/dashboard/`, `wellness/DashboardBuilder.kt`, `report/PdfReportExporter.kt` |
 | Room storage | `data/db/`, `data/WellnessRepository.kt` |
+| Design system (colours, type, shapes) | `ui/theme/Theme.kt`, `ui/theme/Type.kt` |
+| Shared UI components + artwork | `ui/components/Clinical.kt`, `ui/components/Artwork.kt` |
+| Home summary (streak, week, sparklines) | `wellness/ActivitySummary.kt`, `ui/home/` |
+
+## Design system
+
+- **Palette**: deep clinical navy → teal hero gradient with a mint/cyan accent that matches the launcher icon;
+  semantic colours for mood (violet), stress (orange), sleep (indigo); score bands stay green / amber / red.
+  Light and dark themes are both defined in `ui/theme/Theme.kt` (`AppTheme.colors` holds the extended tokens).
+- **Type**: Plus Jakarta Sans for headings and numbers, Inter for text. Both are bundled in `res/font/` (the app has
+  no internet permission, so no downloadable fonts); their SIL OFL licences ship in `assets/licenses/`.
+- **Components** (`ui/components/`): `ClinicalTopBar`, `PanelCard`, `GradientButton`, `SoftButton`, `RingGauge`,
+  `ProgressTrack`, `MetricTile`, `Pill`/`GlassPill`, `Callout`, `Reveal` (staggered entrance), plus artwork:
+  `HeroDecor`, `PulseLine` (animated ECG trace), `BrandMark` and `PoseGlyph` (keypoint-style figure for each asana).
+- **Screenshots**: `./gradlew :app:testDebugUnitTest --tests '*ScreenRenderTest*'` renders every screen (including
+  full-length, demo-data and dark-mode variants) to `app/build/screenshots/`.
 
 ## Deliberate deviations from the blueprint
 

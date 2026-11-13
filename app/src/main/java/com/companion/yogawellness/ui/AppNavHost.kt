@@ -1,5 +1,10 @@
 package com.companion.yogawellness.ui
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -11,7 +16,6 @@ import com.companion.yogawellness.YogaWellnessApp
 import com.companion.yogawellness.ui.consent.ConsentAndSafetyScreen
 import com.companion.yogawellness.ui.dashboard.WellnessDashboardScreen
 import com.companion.yogawellness.ui.home.HomeScreen
-import com.companion.yogawellness.ui.home.WellnessCards
 import com.companion.yogawellness.ui.practice.PracticeScreen
 import com.companion.yogawellness.ui.settings.SettingsScreen
 import com.companion.yogawellness.ui.wellness.CheckInScreen
@@ -36,7 +40,14 @@ fun AppNavHost(nav: NavHostController = rememberNavController()) {
     val app = LocalContext.current.applicationContext as YogaWellnessApp
     val start = if (app.preferences.hasConsent) Routes.HOME else Routes.CONSENT
 
-    NavHost(navController = nav, startDestination = start) {
+    NavHost(
+        navController = nav,
+        startDestination = start,
+        enterTransition = { fadeIn(tween(320)) + slideInHorizontally(tween(360)) { it / 6 } },
+        exitTransition = { fadeOut(tween(220)) + slideOutHorizontally(tween(360)) { -it / 10 } },
+        popEnterTransition = { fadeIn(tween(320)) + slideInHorizontally(tween(360)) { -it / 10 } },
+        popExitTransition = { fadeOut(tween(220)) + slideOutHorizontally(tween(360)) { it / 6 } }
+    ) {
         composable(Routes.CONSENT) {
             val vm: WellnessViewModel = viewModel()
             ConsentAndSafetyScreen(onAccepted = {
@@ -45,18 +56,12 @@ fun AppNavHost(nav: NavHostController = rememberNavController()) {
             })
         }
         composable(Routes.HOME) {
-            val vm: WellnessViewModel = viewModel()
             HomeScreen(
                 onStartPractice = { nav.navigate(Routes.PRACTICE) },
-                extraContent = {
-                    WellnessCards(
-                        vm,
-                        onCheckIn = { nav.navigate(Routes.CHECK_IN) },
-                        onQuestionnaire = { nav.navigate(Routes.questionnaire(it)) },
-                        onSettings = { nav.navigate(Routes.SETTINGS) },
-                        onDashboard = { nav.navigate(Routes.DASHBOARD) }
-                    )
-                }
+                onCheckIn = { nav.navigate(Routes.CHECK_IN) },
+                onQuestionnaire = { nav.navigate(Routes.questionnaire(it)) },
+                onDashboard = { nav.navigate(Routes.DASHBOARD) },
+                onSettings = { nav.navigate(Routes.SETTINGS) }
             )
         }
         composable(Routes.PRACTICE) { PracticeScreen(onBack = { nav.popBackStack() }) }
