@@ -52,6 +52,9 @@ android {
         unitTests.isIncludeAndroidResources = true
     }
 
+    // The exported Room schemas are packaged for the on-device migration test.
+    sourceSets["androidTest"].assets.srcDir("$projectDir/schemas")
+
     lint {
         abortOnError = true
         // Library versions are locked by the blueprint (§2), so "newer version available" is noise.

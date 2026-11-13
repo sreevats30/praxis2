@@ -4,10 +4,10 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.companion.yogawellness.YogaWellnessApp
+import com.companion.yogawellness.data.ProfileIds
 import com.companion.yogawellness.data.db.DailyCheckInEntity
 import com.companion.yogawellness.data.db.QuestionnaireEntity
 import com.companion.yogawellness.scoring.ToleranceProfile
-import com.companion.yogawellness.wellness.MockPersonaSeeder
 import com.companion.yogawellness.wellness.Persona
 import com.companion.yogawellness.wellness.QuestionnaireType
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,11 +28,16 @@ class WellnessViewModel(app: Application) : AndroidViewModel(app) {
     private fun <T> flowState(initial: T, f: kotlinx.coroutines.flow.Flow<T>): StateFlow<T> =
         f.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initial)
 
-    val todayCheckIn: StateFlow<DailyCheckInEntity?> = flowState(null, repo.observeCheckIn(todayEpochDay))
-    val latestPhq: StateFlow<QuestionnaireEntity?> = flowState(null, repo.observeLatest(QuestionnaireType.PHQ9))
-    val latestGad: StateFlow<QuestionnaireEntity?> = flowState(null, repo.observeLatest(QuestionnaireType.GAD7))
-    val phqHistory: StateFlow<List<QuestionnaireEntity>> = flowState(emptyList(), repo.observeHistory(QuestionnaireType.PHQ9))
-    val gadHistory: StateFlow<List<QuestionnaireEntity>> = flowState(emptyList(), repo.observeHistory(QuestionnaireType.GAD7))
+    // Input-form state: always the user's own data, whichever dataset is being viewed elsewhere.
+    private val me = ProfileIds.MY_ACCOUNT
+    val todayCheckIn: StateFlow<DailyCheckInEntity?> = flowState(null, repo.observeCheckIn(todayEpochDay, me))
+    val latestPhq: StateFlow<QuestionnaireEntity?> = flowState(null, repo.observeLatest(QuestionnaireType.PHQ9, me))
+    val latestGad: StateFlow<QuestionnaireEntity?> = flowState(null, repo.observeLatest(QuestionnaireType.GAD7, me))
+    val phqHistory: StateFlow<List<QuestionnaireEntity>> = flowState(emptyList(), repo.observeHistory(QuestionnaireType.PHQ9, me))
+    val gadHistory: StateFlow<List<QuestionnaireEntity>> = flowState(emptyList(), repo.observeHistory(QuestionnaireType.GAD7, me))
+
+    /** The dataset currently viewed in dashboard/history (My Account or a demo persona). */
+    val activeProfileId: StateFlow<String> = container.activeProfile.id
 
     fun history(type: QuestionnaireType) = if (type == QuestionnaireType.PHQ9) phqHistory else gadHistory
     fun latest(type: QuestionnaireType) = if (type == QuestionnaireType.PHQ9) latestPhq else latestGad
@@ -48,17 +53,30 @@ class WellnessViewModel(app: Application) : AndroidViewModel(app) {
     fun saveCheckIn(mood: Int, stress: Int, sleep: Int, pre: Int?, post: Int?, onSaved: () -> Unit) {
         viewModelScope.launch {
             repo.saveCheckIn(todayEpochDay, mood, stress, sleep, pre, post)
+            container.activeProfile.returnToMyAccount() // real data lands in My Account; show it
             onSaved()
         }
     }
 
     fun saveQuestionnaire(type: QuestionnaireType, answers: List<Int?>, onSaved: (QuestionnaireEntity) -> Unit) {
-        viewModelScope.launch { onSaved(repo.saveQuestionnaire(type, todayEpochDay, answers)) }
+        viewModelScope.launch {
+            val saved = repo.saveQuestionnaire(type, todayEpochDay, answers)
+            container.activeProfile.returnToMyAccount()
+            onSaved(saved)
+        }
     }
 
+    /** Adds (or refreshes) a demo persona beside the user's data and views it. Never touches My Account. */
     fun loadPersona(persona: Persona, onDone: () -> Unit) {
         viewModelScope.launch {
-            repo.replaceWithPersona(MockPersonaSeeder.generate(persona, todayEpochDay))
+            container.profileSwitcher.reseedAndSelect(persona)
+            onDone()
+        }
+    }
+
+    fun removeDemoData(onDone: () -> Unit) {
+        viewModelScope.launch {
+            container.profileSwitcher.removeAllDemoData()
             onDone()
         }
     }
@@ -66,6 +84,7 @@ class WellnessViewModel(app: Application) : AndroidViewModel(app) {
     fun deleteAllData(onDone: () -> Unit) {
         viewModelScope.launch {
             repo.deleteAllData()
+            container.activeProfile.returnToMyAccount()
             onDone()
         }
     }

@@ -203,7 +203,31 @@ class ScreenRenderTest {
     fun settingsScreen() {
         setScreen { com.companion.yogawellness.ui.settings.SettingsScreen(onBack = {}, onDataDeleted = {}) }
         compose.onAllNodesWithText("Delete All My Data")[0].assertExists()
+        compose.onNodeWithText("Your own data is not changed.", substring = true).assertExists()
+        compose.onNodeWithText("Remove demo data").assertExists()
         save("settings")
+    }
+
+    @Test
+    fun profileSelectorAndDemoBanner() {
+        setScreen {
+            Surface {
+                androidx.compose.foundation.layout.Column(
+                    Modifier.padding(16.dp),
+                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)
+                ) {
+                    com.companion.yogawellness.ui.profile.ProfileSelector(
+                        activeId = com.companion.yogawellness.data.ProfileIds.PERSONA_A, busyId = null, onSelect = {}
+                    )
+                    com.companion.yogawellness.ui.profile.DemoBanner(com.companion.yogawellness.data.ProfileIds.PERSONA_A, onBackToMyAccount = {})
+                    com.companion.yogawellness.ui.profile.DemoBanner(com.companion.yogawellness.data.ProfileIds.MY_ACCOUNT, onBackToMyAccount = {})
+                }
+            }
+        }
+        compose.onNodeWithText("Viewing demo data (Demo A · Consistent). Your own data is safe.").assertExists()
+        compose.onNodeWithText("👤 My Account").assertExists()
+        org.junit.Assert.assertEquals(1, compose.onAllNodesWithText("Back to My Account").fetchSemanticsNodes().size)
+        save("profile_selector_demo_banner")
     }
 
     @Test

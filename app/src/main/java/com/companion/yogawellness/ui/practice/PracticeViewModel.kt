@@ -134,7 +134,8 @@ class PracticeViewModel(app: Application) : AndroidViewModel(app) {
         val end = System.currentTimeMillis()
         val profile = pipeline.toleranceProfile.name
         container.appScope.launch {
-            container.repository.saveSession(segments, start, end, LocalDate.now().toEpochDay(), profile)
+            val id = container.repository.saveSession(segments, start, end, LocalDate.now().toEpochDay(), profile)
+            if (id != null) container.activeProfile.returnToMyAccount()
         }
     }
 

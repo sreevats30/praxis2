@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.companion.yogawellness.ui.profile.DemoBannerBar
 import com.companion.yogawellness.ui.wellness.WellnessViewModel
 import com.companion.yogawellness.ui.wellness.formatEpochDay
 import com.companion.yogawellness.wellness.QuestionnaireType
@@ -33,6 +34,8 @@ fun WellnessCards(
     val today by vm.todayCheckIn.collectAsStateWithLifecycle()
     val phq by vm.latestPhq.collectAsStateWithLifecycle()
     val gad by vm.latestGad.collectAsStateWithLifecycle()
+
+    DemoBannerBar()
 
     Card {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
