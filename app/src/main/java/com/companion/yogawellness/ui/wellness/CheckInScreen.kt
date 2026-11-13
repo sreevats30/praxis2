@@ -37,7 +37,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -48,6 +47,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -69,9 +70,10 @@ import kotlin.math.roundToInt
 @Composable
 fun CheckInScreen(onDone: () -> Unit, vm: WellnessViewModel = viewModel()) {
     val existing by vm.todayCheckIn.collectAsStateWithLifecycle()
-    var mood by rememberSaveable { mutableIntStateOf(6) }
-    var stress by rememberSaveable { mutableIntStateOf(5) }
-    var sleep by rememberSaveable { mutableIntStateOf(6) }
+    // Zero state: nothing is pre-filled. Each scale is unrated until the user sets it.
+    var mood by rememberSaveable { mutableStateOf<Int?>(null) }
+    var stress by rememberSaveable { mutableStateOf<Int?>(null) }
+    var sleep by rememberSaveable { mutableStateOf<Int?>(null) }
     var pre by rememberSaveable { mutableStateOf<Int?>(null) }
     var post by rememberSaveable { mutableStateOf<Int?>(null) }
     var loaded by rememberSaveable { mutableStateOf(false) }
@@ -132,12 +134,25 @@ fun CheckInScreen(onDone: () -> Unit, vm: WellnessViewModel = viewModel()) {
                     if (p != null && q != null) TensionDelta(p, q)
                 }
             }
+            val m = mood
+            val st = stress
+            val sl = sleep
+            val complete = m != null && st != null && sl != null
             GradientButton(
                 if (existing != null) "Update today's check-in" else "Save check-in",
-                { vm.saveCheckIn(mood, stress, sleep, pre, post, onDone) },
+                { if (m != null && st != null && sl != null) vm.saveCheckIn(m, st, sl, pre, post, onDone) },
                 Modifier.fillMaxWidth(),
+                enabled = complete,
                 icon = Icons.Rounded.CheckCircle
             )
+            if (!complete) {
+                Text(
+                    "Rate mood, stress and sleep to save.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = AppTheme.colors.inkMuted,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+            }
             Spacer(Modifier.height(8.dp))
         }
     }
@@ -152,7 +167,7 @@ private fun ScaleCard(
     label: String,
     icon: ImageVector,
     color: Color,
-    value: Int,
+    value: Int?,
     low: String,
     high: String,
     word: (Int) -> String,
@@ -163,25 +178,36 @@ private fun ScaleCard(
             IconBadge(icon, color, size = 40.dp)
             Column(Modifier.weight(1f)) {
                 Text(label, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-                Text(word(value), style = MaterialTheme.typography.labelMedium, color = color)
+                Text(
+                    value?.let(word) ?: "Not rated yet",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (value != null) color else AppTheme.colors.inkMuted
+                )
             }
             Row(verticalAlignment = Alignment.Bottom) {
-                Text("$value", style = NumericStyle.copy(fontSize = MaterialTheme.typography.headlineMedium.fontSize), color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    value?.toString() ?: "–",
+                    style = NumericStyle.copy(fontSize = MaterialTheme.typography.headlineMedium.fontSize),
+                    color = if (value != null) MaterialTheme.colorScheme.onSurface else AppTheme.colors.inkMuted
+                )
                 Text(" / 10", style = MaterialTheme.typography.labelMedium, color = AppTheme.colors.inkMuted, modifier = Modifier.padding(bottom = 5.dp))
             }
         }
+        // Unrated: an empty track with no thumb; tapping or dragging anywhere sets the value.
+        val faint = color.copy(alpha = 0.16f)
         Slider(
-            value = value.toFloat(),
+            value = value?.toFloat() ?: 1f,
             onValueChange = { onChange(it.roundToInt()) },
             valueRange = 1f..10f,
             steps = 8,
             colors = SliderDefaults.colors(
-                thumbColor = color,
-                activeTrackColor = color,
-                inactiveTrackColor = color.copy(alpha = 0.16f),
-                activeTickColor = Color.White.copy(alpha = 0.6f),
+                thumbColor = if (value != null) color else Color.Transparent,
+                activeTrackColor = if (value != null) color else faint,
+                inactiveTrackColor = faint,
+                activeTickColor = if (value != null) Color.White.copy(alpha = 0.6f) else color.copy(alpha = 0.45f),
                 inactiveTickColor = color.copy(alpha = 0.45f)
-            )
+            ),
+            modifier = if (value == null) Modifier.semantics { stateDescription = "$label not rated yet" } else Modifier
         )
         Row {
             Text(low, style = MaterialTheme.typography.labelMedium, color = AppTheme.colors.inkMuted, modifier = Modifier.weight(1f))

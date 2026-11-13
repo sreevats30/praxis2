@@ -62,6 +62,9 @@ class WellnessRepository(
     /** Every session of a profile, newest first. */
     fun observeAllSessions(profileId: String): Flow<List<PracticeSessionEntity>> = db.sessions().observeAllSessions(profileId)
 
+    /** Whether any demo persona is stored; the profile switcher stays hidden until one is. */
+    fun observeHasDemoData(): Flow<Boolean> = db.sessions().observeHasDemoData()
+
     /** Every pose record of a profile's sessions. */
     fun observeAllPoses(profileId: String): Flow<List<PoseRecordEntity>> = db.sessions().observeAllPoses(profileId)
 
