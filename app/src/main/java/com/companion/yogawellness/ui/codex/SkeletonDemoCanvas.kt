@@ -43,10 +43,13 @@ import com.companion.yogawellness.codex.PoseAngles
 import com.companion.yogawellness.codex.PoseTimeline
 import com.companion.yogawellness.codex.SkeletonJoint
 import com.companion.yogawellness.codex.SkeletonRig
+import kotlin.math.abs
 import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.math.sin
 import kotlin.math.sqrt
 
 /** Colours of the demo figure (§5.4). */
@@ -62,6 +65,9 @@ object DemoColors {
     val PillText = Color.White
 }
 
+/** Steepest view tilt of the interactive demo (looking down from above). */
+const val MAX_TILT_DEG = 60f
+
 private val BONES = SkeletonRig.BONES
 private const val JOINTS = 17
 private val HEAD = SkeletonJoint.HEAD.ordinal
@@ -72,7 +78,11 @@ private val PELVIS = SkeletonJoint.PELVIS.ordinal
  * it solves the rig and writes plain float arrays; the draw pass only reads them, so drawing a
  * frame allocates nothing.
  */
-class DemoFrame(val item: AsanaCodexItem) {
+class DemoFrame(
+    val item: AsanaCodexItem,
+    /** Frame the figure for a full 360° turn (interactive demo): centred on the turn axis, same size at every angle. */
+    val fullTurn: Boolean = false
+) {
     val x = FloatArray(JOINTS)
     val y = FloatArray(JOINTS)
     private val z = FloatArray(JOINTS)
@@ -82,6 +92,20 @@ class DemoFrame(val item: AsanaCodexItem) {
     /** Bones clearly behind the pelvis are drawn dimmer (depth cue in side/45° views). */
     val boneFar = BooleanArray(BONES.size)
     var atPeak = true
+        private set
+
+    /** View tilt (camera elevation) of the last [update], for the floor ellipse and framing. */
+    var tiltSin = 0f
+        private set
+    var tiltDeg = 0f
+        private set
+    /** Head centre in display space; the head rests on the floor (world space) before tilting. */
+    var headX = 0f
+        private set
+    var headY = 0f
+        private set
+    /** Display height of the floor point under the pelvis (foot of the plumb line). */
+    var pelvisFloorY = 0f
         private set
 
     private val callouts = item.callouts
@@ -94,7 +118,18 @@ class DemoFrame(val item: AsanaCodexItem) {
     val pillDx = FloatArray(callouts.size)
     val pillDy = FloatArray(callouts.size)
 
-    /** Fixed framing for the item (union over start/peak blends and all three views). */
+    /** Highest display point per tilt step (full-turn frames); see [maxYFor]. */
+    private val maxYAtTilt: FloatArray
+
+    /** Framing height at [tiltDeg]: covers every yaw and the whole start→peak motion. */
+    fun maxYFor(tiltDeg: Float): Float {
+        val pos = (tiltDeg / TILT_STEP_DEG).coerceIn(0f, TILT_STEPS.toFloat())
+        val i = pos.toInt().coerceAtMost(TILT_STEPS - 1)
+        val f = pos - i
+        return maxYAtTilt[i] * (1 - f) + maxYAtTilt[i + 1] * f
+    }
+
+    /** Fixed framing for the item (union over start/peak blends and all three views, or a full turn). */
     val minX: Float
     val maxX: Float
     val maxY: Float
@@ -103,24 +138,59 @@ class DemoFrame(val item: AsanaCodexItem) {
         var lo = Float.MAX_VALUE
         var hi = -Float.MAX_VALUE
         var top = 0f
-        for (view in CodexView.entries) for (i in 0..8) {
-            val s = ForwardKinematics.solve(PoseAngles.lerp(item.start, item.peak, i / 8f), view.yawDeg)
+        var radius = 0f // distance from the vertical turn axis: the same at every yaw
+        val topAtTilt = FloatArray(TILT_STEPS + 1) // highest display point per tilt step, over every yaw
+        val yaws = if (fullTurn) FloatArray(12) { it * 30f } else FloatArray(CodexView.entries.size) { CodexView.entries[it].yawDeg }
+        for (yawDeg in yaws) for (i in 0..8) {
+            val s = ForwardKinematics.solve(PoseAngles.lerp(item.start, item.peak, i / 8f), yawDeg)
             for (j in SkeletonJoint.entries) {
                 val p = s[j]
                 lo = min(lo, p.x.toFloat()); hi = max(hi, p.x.toFloat()); top = max(top, p.y.toFloat())
+                val rho = sqrt((p.x * p.x + p.z * p.z).toFloat())
+                radius = max(radius, rho)
+                if (fullTurn) for (k in 0..TILT_STEPS) {
+                    // y·cos t − z·sin t is largest when the joint is turned furthest away (z = −rho).
+                    val t = Math.toRadians(k * TILT_STEP_DEG.toDouble())
+                    topAtTilt[k] = max(topAtTilt[k], (p.y * cos(t) + rho * sin(t)).toFloat())
+                }
             }
         }
         val headR = HEAD_RADIUS.toFloat()
-        minX = lo - headR; maxX = hi + headR; maxY = top + headR
+        if (fullTurn) {
+            // Symmetric about the turn axis, so spinning never shifts or rescales the figure.
+            val r = max(radius, max(abs(lo), abs(hi))) + headR
+            minX = -r; maxX = r
+        } else {
+            minX = lo - headR; maxX = hi + headR
+        }
+        maxY = top + headR
+        maxYAtTilt = FloatArray(TILT_STEPS + 1) { if (fullTurn) topAtTilt[it] + headR else maxY }
         update(item.peak, item.defaultView.yawDeg, atPeak = true)
     }
 
-    fun update(angles: PoseAngles, yawDeg: Float, atPeak: Boolean) {
+    /**
+     * Solves the rig at [yawDeg] (any angle: a full turn about the vertical axis) and applies a
+     * view [tiltDeg] (0 = eye level, positive = looking down from above). +z points at the viewer.
+     */
+    fun update(angles: PoseAngles, yawDeg: Float, atPeak: Boolean, tiltDeg: Float = 0f) {
         val s = ForwardKinematics.solve(angles, yawDeg)
+        val t = Math.toRadians(tiltDeg.toDouble())
+        val st = sin(t).toFloat()
+        val ct = cos(t).toFloat()
         for (j in SkeletonJoint.entries) {
             val p = s[j]
-            x[j.ordinal] = p.x.toFloat(); y[j.ordinal] = p.y.toFloat(); z[j.ordinal] = p.z.toFloat()
+            val wy = p.y.toFloat()
+            val wz = p.z.toFloat()
+            x[j.ordinal] = p.x.toFloat()
+            y[j.ordinal] = wy * ct - wz * st
+            z[j.ordinal] = wz * ct + wy * st
         }
+        tiltSin = st
+        this.tiltDeg = tiltDeg
+        val head = s[SkeletonJoint.HEAD]
+        headX = head.x.toFloat()
+        headY = max(head.y.toFloat(), HEAD_RADIUS.toFloat()) * ct - head.z.toFloat() * st
+        pelvisFloorY = -s[SkeletonJoint.PELVIS].z.toFloat() * st
         this.atPeak = atPeak
         val pz = z[PELVIS]
         for (b in BONES.indices) {
@@ -196,12 +266,16 @@ class DemoFrame(val item: AsanaCodexItem) {
 
     companion object {
         const val HEAD_RADIUS = 0.15
+        private const val TILT_STEP_DEG = 5f
+        private val TILT_STEPS = (MAX_TILT_DEG / TILT_STEP_DEG).toInt()
     }
 }
 
 /** Objects the draw pass needs, created once per density (never inside DrawScope). */
 class DemoStyle(
     val arcStroke: Stroke,
+    /** Outline of the floor ellipse when the view is tilted. */
+    val floorStroke: Stroke = Stroke(width = 2f),
     val plumbEffect: PathEffect,
     val pillPadPx: Float,
     val arcRadiusPx: Float,
@@ -217,17 +291,29 @@ fun DrawScope.drawDemoFrame(f: DemoFrame, style: DemoStyle?, labels: List<TextLa
     val w = size.width
     val h = size.height
     val worldW = f.maxX - f.minX
-    val scale = min(w * 0.86f / worldW, h * 0.80f / f.maxY)
-    val floorY = h * 0.90f
+    // Full-turn frames are symmetric about the turn axis, so spinning never moves or rescales the
+    // figure; tilting zooms out smoothly to fit the raised far side and the floor disc.
+    val floorDepth = if (f.fullTurn) worldW / 2f * f.tiltSin else 0f
+    val top = if (f.fullTurn) f.maxYFor(f.tiltDeg) else f.maxY
+    val scale = min(w * 0.86f / worldW, h * 0.80f / (top + floorDepth))
+    val floorY = h * 0.90f - floorDepth * scale
     val cx = w / 2f - (f.minX + f.maxX) / 2f * scale
     val bone = if (f.atPeak) DemoColors.PeakBone else DemoColors.MovingBone
     val boneW = max(2f, scale * 0.075f)
 
-    drawLine(DemoColors.Floor, Offset(w * 0.04f, floorY), Offset(w * 0.96f, floorY), strokeWidth = max(1.5f, scale * 0.02f))
+    if (f.tiltSin > 0.02f && style != null) {
+        // Tilted view: the floor is a disc around the turn axis.
+        val rx = worldW / 2f * scale
+        val ry = rx * f.tiltSin
+        drawOval(DemoColors.Floor.copy(alpha = 0.25f), Offset(cx - rx, floorY - ry), Size(2 * rx, 2 * ry))
+        drawOval(DemoColors.Floor, Offset(cx - rx, floorY - ry), Size(2 * rx, 2 * ry), style = style.floorStroke)
+    } else {
+        drawLine(DemoColors.Floor, Offset(w * 0.04f, floorY), Offset(w * 0.96f, floorY), strokeWidth = max(1.5f, scale * 0.02f))
+    }
     if (showPlumb && style != null) {
         val px = cx + f.x[PELVIS] * scale
         drawLine(
-            DemoColors.Plumb, Offset(px, floorY - f.y[PELVIS] * scale), Offset(px, floorY),
+            DemoColors.Plumb, Offset(px, floorY - f.y[PELVIS] * scale), Offset(px, floorY - f.pelvisFloorY * scale),
             strokeWidth = max(1f, scale * 0.015f), pathEffect = style.plumbEffect
         )
     }
@@ -249,7 +335,7 @@ fun DrawScope.drawDemoFrame(f: DemoFrame, style: DemoStyle?, labels: List<TextLa
     // Head: a ring drawn as two discs (no Stroke object needed). The rig's ground contact is
     // joint-based, so a head resting on the floor (puppy, child's pose, lying poses) would be half
     // buried; rest the circle on the floor instead.
-    val head = Offset(cx + f.x[HEAD] * scale, floorY - max(f.y[HEAD], DemoFrame.HEAD_RADIUS.toFloat()) * scale)
+    val head = Offset(cx + f.headX * scale, floorY - f.headY * scale)
     val headR = (DemoFrame.HEAD_RADIUS * scale).toFloat()
     drawCircle(bone, headR, head)
     drawCircle(DemoColors.Background, headR - boneW * 0.7f, head)
@@ -307,14 +393,19 @@ fun SkeletonDemoCanvas(
     yawDeg: Float,
     showAngles: Boolean,
     modifier: Modifier = Modifier,
-    breathTime: MutableFloatState? = null
+    breathTime: MutableFloatState? = null,
+    /** View tilt: 0 = eye level, up to [MAX_TILT_DEG] = looking down from above. */
+    tiltDeg: Float = 0f,
+    /** Keep the figure centred and the same size through a full 360° turn. */
+    fullTurn: Boolean = false
 ) {
     val density = LocalDensity.current
-    val frame = remember(item) { DemoFrame(item) }
+    val frame = remember(item, fullTurn) { DemoFrame(item, fullTurn) }
     var version by remember { mutableIntStateOf(0) }
     val clock = remember(item) { FloatArray(2) } // [0] timeline seconds (speed applied), [1] breath seconds
     var resumeAtPeak by remember(item) { mutableStateOf(!playing) }
     val currentYaw by rememberUpdatedState(yawDeg)
+    val currentTilt by rememberUpdatedState(tiltDeg)
     val currentSpeed by rememberUpdatedState(speed)
     var resumed by remember { mutableStateOf(false) }
     LifecycleResumeEffect(Unit) {
@@ -324,17 +415,17 @@ fun SkeletonDemoCanvas(
 
     fun refresh(play: Boolean) {
         if (!play) {
-            frame.update(item.peak, currentYaw, atPeak = true)
+            frame.update(item.peak, currentYaw, atPeak = true, tiltDeg = currentTilt)
         } else {
             val state = PoseTimeline.timelineAt(clock[0])
             val breath = PoseTimeline.breathOffset(clock[1], item.breath, state.phase)
-            frame.update(PoseTimeline.anglesFor(item.start, item.peak, state, breath), currentYaw, atPeak = state.blend >= 0.98f)
+            frame.update(PoseTimeline.anglesFor(item.start, item.peak, state, breath), currentYaw, atPeak = state.blend >= 0.98f, tiltDeg = currentTilt)
         }
         version++
     }
 
-    // Yaw tween / play-pause changes while no frame loop is running.
-    LaunchedEffect(item, yawDeg, playing) {
+    // Rotation / tilt / play-pause changes while no frame loop is running.
+    LaunchedEffect(item, yawDeg, tiltDeg, playing) {
         if (!playing) resumeAtPeak = true
         refresh(playing)
     }
@@ -369,7 +460,8 @@ fun SkeletonDemoCanvas(
                 plumbEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 5.dp.toPx())),
                 pillPadPx = 6.dp.toPx(),
                 arcRadiusPx = 18.dp.toPx(),
-                pillOffsetPx = 40.dp.toPx()
+                pillOffsetPx = 40.dp.toPx(),
+                floorStroke = Stroke(width = 1.5.dp.toPx())
             )
         }
     }
