@@ -50,7 +50,7 @@ class OfflineTtsCoach(context: Context) : TextToSpeech.OnInitListener {
         } else {
             tts.language = Locale.US
         }
-        tts.setSpeechRate(0.95f)
+        tts.setSpeechRate(SPEECH_RATE)
         ready = true
     }
 
@@ -83,3 +83,9 @@ class OfflineTtsCoach(context: Context) : TextToSpeech.OnInitListener {
         private const val TAG = "OfflineTtsCoach"
     }
 }
+
+/**
+ * Coach speaking speed (1.0 = the engine's normal rate). Slightly slower than normal so cues are
+ * easy to follow mid-pose without sounding sluggish. Was 0.95.
+ */
+private const val SPEECH_RATE = 0.85f
