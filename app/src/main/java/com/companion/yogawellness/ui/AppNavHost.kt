@@ -1,8 +1,6 @@
 package com.companion.yogawellness.ui
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
@@ -10,7 +8,6 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -20,14 +17,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.companion.yogawellness.YogaWellnessApp
+import com.companion.yogawellness.scoring.Asana
+import com.companion.yogawellness.ui.codex.AsanaCodexScreen
+import com.companion.yogawellness.ui.codex.AsanaDetailScreen
 import com.companion.yogawellness.ui.consent.ConsentAndSafetyScreen
 import com.companion.yogawellness.ui.dashboard.WellnessDashboardScreen
 import com.companion.yogawellness.ui.history.SessionHistoryScreen
@@ -43,15 +44,19 @@ import com.companion.yogawellness.wellness.QuestionnaireType
 object Routes {
     const val CONSENT = "consent"
     const val HOME = "home"
-    const val PRACTICE = "practice"
+    /** Practice, with an optional `asana` hint from the Learn tab (display only). */
+    const val PRACTICE = "practice?asana={asana}"
     const val CHECK_IN = "checkin"
     const val QUESTIONNAIRE = "questionnaire/{type}"
     const val SETTINGS = "settings"
     const val DASHBOARD = "dashboard"
     const val HISTORY = "history"
     const val CODEX = "codex"
+    const val CODEX_DETAIL = "codex/{id}"
 
     fun questionnaire(type: QuestionnaireType) = "questionnaire/${type.name}"
+    fun practice(target: Asana? = null) = if (target == null) "practice" else "practice?asana=${target.name}"
+    fun codexDetail(id: String) = "codex/$id"
 }
 
 /** The four destinations of the bottom navigation bar. */
@@ -118,7 +123,7 @@ fun AppNavHost(nav: NavHostController = rememberNavController()) {
             composable(Routes.HOME) {
                 val vm: WellnessViewModel = viewModel()
                 HomeScreen(
-                    onStartPractice = { nav.navigate(Routes.PRACTICE) },
+                    onStartPractice = { nav.navigate(Routes.practice()) },
                     extraContent = {
                         WellnessCards(
                             vm,
@@ -131,8 +136,13 @@ fun AppNavHost(nav: NavHostController = rememberNavController()) {
                     }
                 )
             }
-            composable(Routes.PRACTICE) {
+            composable(
+                Routes.PRACTICE,
+                arguments = listOf(navArgument("asana") { type = NavType.StringType; nullable = true; defaultValue = null })
+            ) { entry ->
+                val target = entry.arguments?.getString("asana")?.let { n -> Asana.entries.firstOrNull { it.name == n && it.isScored } }
                 PracticeScreen(
+                    targetAsana = target,
                     onBack = { nav.popBackStack() },
                     onFinished = {
                         // Pop Practice for good (no saveState) so its camera/model resources are released.
@@ -149,8 +159,15 @@ fun AppNavHost(nav: NavHostController = rememberNavController()) {
                 QuestionnaireScreen(type, onDone = { nav.popBackStack() })
             }
             composable(Routes.DASHBOARD) { WellnessDashboardScreen(onBack = { nav.popBackStack() }) }
-            composable(Routes.HISTORY) { SessionHistoryScreen(onStartPractice = { nav.navigate(Routes.PRACTICE) }) }
-            composable(Routes.CODEX) { LearnPlaceholder() }
+            composable(Routes.HISTORY) { SessionHistoryScreen(onStartPractice = { nav.navigate(Routes.practice()) }) }
+            composable(Routes.CODEX) { AsanaCodexScreen(onOpen = { nav.navigate(Routes.codexDetail(it)) }) }
+            composable(Routes.CODEX_DETAIL, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
+                AsanaDetailScreen(
+                    id = entry.arguments?.getString("id").orEmpty(),
+                    onBack = { nav.popBackStack() },
+                    onPracticeLive = { nav.navigate(Routes.practice(it)) }
+                )
+            }
             composable(Routes.SETTINGS) {
                 SettingsScreen(
                     onBack = { nav.popBackStack() },
@@ -160,14 +177,5 @@ fun AppNavHost(nav: NavHostController = rememberNavController()) {
                 )
             }
         }
-    }
-}
-
-/** Phase 3 stand-in for the Learn tab (the Asana Codex replaces it). */
-@Composable
-private fun LearnPlaceholder() {
-    Column(Modifier.fillMaxSize().padding(24.dp)) {
-        Text("Learn", style = MaterialTheme.typography.headlineSmall)
-        Text("The pose library is coming next.", style = MaterialTheme.typography.bodyMedium)
     }
 }

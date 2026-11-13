@@ -53,7 +53,10 @@ import java.io.File
 @Config(sdk = [34], qualifiers = "w360dp-h740dp-xxhdpi")
 class ScreenRenderTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val freshViewModels = FreshViewModelFactoryRule()
+
+    @get:Rule(order = 1)
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     /** Software-draws the activity's root view (captureToImage() hangs under Robolectric). */
@@ -392,7 +395,7 @@ class ScreenRenderTest {
     @Test
     fun bottomBarOnlyOnTopLevelRoutes() {
         listOf(Routes.HOME, Routes.CODEX, Routes.HISTORY, Routes.DASHBOARD).forEach { org.junit.Assert.assertTrue(it, showsBottomBar(it)) }
-        listOf(Routes.CONSENT, Routes.PRACTICE, Routes.CHECK_IN, Routes.QUESTIONNAIRE, Routes.SETTINGS, null).forEach {
+        listOf(Routes.CONSENT, Routes.PRACTICE, Routes.CHECK_IN, Routes.QUESTIONNAIRE, Routes.SETTINGS, Routes.CODEX_DETAIL, null).forEach {
             org.junit.Assert.assertFalse("$it", showsBottomBar(it))
         }
     }

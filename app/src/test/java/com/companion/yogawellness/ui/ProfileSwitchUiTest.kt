@@ -28,7 +28,10 @@ import java.time.LocalDate
 @Config(sdk = [34], qualifiers = "w360dp-h740dp-xxhdpi")
 class ProfileSwitchUiTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val freshViewModels = FreshViewModelFactoryRule()
+
+    @get:Rule(order = 1)
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     private fun waitForText(text: String, present: Boolean = true) = compose.waitUntil(15_000) {
