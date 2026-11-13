@@ -79,6 +79,13 @@ interface SessionDao {
     @Query("SELECT COUNT(*) FROM practice_sessions WHERE profileId = :profileId")
     suspend fun count(profileId: String): Int
 
+    /** True once any demo persona has been loaded (check-ins or sessions outside My Account). */
+    @Query(
+        "SELECT EXISTS(SELECT 1 FROM daily_checkins WHERE profileId != 'MY_ACCOUNT') " +
+            "OR EXISTS(SELECT 1 FROM practice_sessions WHERE profileId != 'MY_ACCOUNT')"
+    )
+    fun observeHasDemoData(): Flow<Boolean>
+
     /** Live-session checkpoint: only My Account sessions are ever updated. Returns rows changed. */
     @Query(
         "UPDATE practice_sessions SET endedAtMs = :endedAtMs, activeSec = :activeSec, meanScore = :meanScore " +

@@ -12,6 +12,8 @@ import com.companion.yogawellness.data.ProfileIds
 import com.companion.yogawellness.ui.dashboard.WellnessDashboardScreen
 import com.companion.yogawellness.ui.profile.demoBannerText
 import com.companion.yogawellness.ui.theme.YogaWellnessTheme
+import com.companion.yogawellness.wellness.MockPersonaSeeder
+import com.companion.yogawellness.wellness.Persona
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -42,7 +44,11 @@ class ProfileSwitchUiTest {
     fun switchToDemoAndBackKeepsMyData() {
         val app = ApplicationProvider.getApplicationContext<YogaWellnessApp>()
         val today = LocalDate.now().toEpochDay()
-        runBlocking { app.repository.saveCheckIn(today, mood = 3, stress = 8, sleep = 4, preTension = null, postTension = null) }
+        runBlocking {
+            app.repository.saveCheckIn(today, mood = 3, stress = 8, sleep = 4, preTension = null, postTension = null)
+            // Demo data is opt-in (Settings → Demo data); the profile chips only appear once it exists.
+            app.repository.seedPersona(MockPersonaSeeder.generate(Persona.B_EXAM_GAP, today))
+        }
 
         compose.setContent { YogaWellnessTheme { WellnessDashboardScreen(onBack = {}) } }
         waitForText("1 / 7") // my single check-in

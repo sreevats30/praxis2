@@ -94,13 +94,19 @@ fun ProfileSelector(activeId: String, busyId: String?, onSelect: (String) -> Uni
 private fun chipText(profileId: String): String =
     if (profileId == ProfileIds.MY_ACCOUNT) "My Account" else Persona.forProfileId(profileId)?.shortLabel ?: profileId
 
-/** Profile chips bound to the app's [com.companion.yogawellness.data.ActiveProfile]. */
+/**
+ * Profile chips bound to the app's [com.companion.yogawellness.data.ActiveProfile]. A new account
+ * starts at zero with no demo affordances: the chips only appear once demo data has been loaded
+ * (Settings → Demo data) or a demo is being viewed.
+ */
 @Composable
 fun ProfileSelectorBar(modifier: Modifier = Modifier) {
     val app = LocalContext.current.applicationContext as YogaWellnessApp
     val active by app.activeProfile.id.collectAsStateWithLifecycle()
+    val hasDemoData by remember { app.repository.observeHasDemoData() }.collectAsStateWithLifecycle(initialValue = false)
     var busy by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    if (!hasDemoData && !ProfileIds.isDemo(active)) return
     ProfileSelector(
         activeId = active,
         busyId = busy,

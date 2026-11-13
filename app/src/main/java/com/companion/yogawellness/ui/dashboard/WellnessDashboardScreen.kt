@@ -143,7 +143,10 @@ fun DashboardScreenContent(
                 title = "Wellness dashboard",
                 subtitle = "Last ${DashboardBuilder.WINDOW_DAYS / 7} weeks · analysed on this phone",
                 onBack = onBack,
-                actions = { GlassIconButton(Icons.Rounded.PictureAsPdf, "Export weekly PDF report", onExport) },
+                // No report to export until there is real data (a new account starts empty).
+                actions = {
+                    if (data != null && !data.isEmpty) GlassIconButton(Icons.Rounded.PictureAsPdf, "Export weekly PDF report", onExport)
+                },
                 bottom = {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         GlassPill("On-device", icon = Icons.Rounded.Memory)
