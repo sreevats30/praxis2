@@ -1,27 +1,39 @@
 package com.companion.yogawellness.ui.wellness
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import androidx.compose.material.icons.automirrored.rounded.TrendingDown
+import androidx.compose.material.icons.automirrored.rounded.TrendingFlat
+import androidx.compose.material.icons.automirrored.rounded.TrendingUp
+import androidx.compose.material.icons.rounded.Bedtime
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.SelfImprovement
+import androidx.compose.material.icons.rounded.SentimentSatisfied
+import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,15 +41,31 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.companion.yogawellness.ui.components.ClinicalTopBar
+import com.companion.yogawellness.ui.components.GlassPill
+import com.companion.yogawellness.ui.components.GradientButton
+import com.companion.yogawellness.ui.components.IconBadge
+import com.companion.yogawellness.ui.components.Overline
+import com.companion.yogawellness.ui.components.PanelCard
+import com.companion.yogawellness.ui.components.Pill
+import com.companion.yogawellness.ui.components.Reveal
+import com.companion.yogawellness.ui.theme.AppTheme
+import com.companion.yogawellness.ui.theme.Brand
+import com.companion.yogawellness.ui.theme.NumericStyle
 import kotlin.math.roundToInt
 
 /** Daily check-in, under 30 seconds (§9.2): mood, stress, sleep + optional pre/post tension. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CheckInScreen(onDone: () -> Unit, vm: WellnessViewModel = viewModel()) {
     val existing by vm.todayCheckIn.collectAsStateWithLifecycle()
@@ -57,10 +85,18 @@ fun CheckInScreen(onDone: () -> Unit, vm: WellnessViewModel = viewModel()) {
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = { Text("Daily check-in") },
-                navigationIcon = { IconButton(onClick = onDone) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }
+            ClinicalTopBar(
+                title = "Daily check-in",
+                subtitle = formatEpochDay(vm.todayEpochDay),
+                onBack = onDone,
+                bottom = {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        GlassPill("Under 30 seconds", icon = Icons.Rounded.Timer)
+                        if (existing != null) GlassPill("Logged today", icon = Icons.Rounded.CheckCircle)
+                    }
+                }
             )
         }
     ) { padding ->
@@ -69,63 +105,158 @@ fun CheckInScreen(onDone: () -> Unit, vm: WellnessViewModel = viewModel()) {
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text("Takes under 30 seconds. Just move the sliders.", style = MaterialTheme.typography.bodyMedium)
-            ScaleSlider("Mood", mood, "Low", "Great") { mood = it }
-            ScaleSlider("Stress", stress, "Calm", "Very stressed") { stress = it }
-            ScaleSlider("Sleep quality", sleep, "Poor", "Excellent") { sleep = it }
-            TensionPicker("Body tension before practice (optional)", pre) { pre = it }
-            TensionPicker("Body tension after practice (optional)", post) { post = it }
-            if (pre != null && post != null) {
-                Text(
-                    "Self-rated tension went from $pre to $post after today's practice.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
+            Text(
+                "Just move the sliders — there are no right answers.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Reveal(0) { ScaleCard("Mood", Icons.Rounded.SentimentSatisfied, Brand.Mood, mood, "Low", "Great", ::moodWord) { mood = it } }
+            Reveal(1) { ScaleCard("Stress", Icons.Rounded.Bolt, Brand.Stress, stress, "Calm", "Very stressed", ::stressWord) { stress = it } }
+            Reveal(2) { ScaleCard("Sleep quality", Icons.Rounded.Bedtime, Brand.Sleep, sleep, "Poor", "Excellent", ::sleepWord) { sleep = it } }
+            Reveal(3) {
+                PanelCard(spacing = 14.dp, elevation = 6.dp) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        IconBadge(Icons.Rounded.SelfImprovement, Brand.Practice, size = 40.dp)
+                        Column {
+                            Overline("Optional", color = AppTheme.colors.inkMuted)
+                            Text("Body tension", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                        }
+                    }
+                    TensionPicker("Before practice", pre) { pre = it }
+                    TensionPicker("After practice", post) { post = it }
+                    val p = pre
+                    val q = post
+                    if (p != null && q != null) TensionDelta(p, q)
+                }
             }
-            Button(
-                onClick = { vm.saveCheckIn(mood, stress, sleep, pre, post, onDone) },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text(if (existing != null) "Update today's check-in" else "Save check-in") }
+            GradientButton(
+                if (existing != null) "Update today's check-in" else "Save check-in",
+                { vm.saveCheckIn(mood, stress, sleep, pre, post, onDone) },
+                Modifier.fillMaxWidth(),
+                icon = Icons.Rounded.CheckCircle
+            )
+            Spacer(Modifier.height(8.dp))
         }
     }
 }
 
+private fun moodWord(v: Int) = when (v) { in 1..2 -> "Very low"; in 3..4 -> "Low"; in 5..6 -> "Okay"; in 7..8 -> "Good"; else -> "Great" }
+private fun stressWord(v: Int) = when (v) { in 1..2 -> "Calm"; in 3..4 -> "Mild"; in 5..6 -> "Moderate"; in 7..8 -> "High"; else -> "Very high" }
+private fun sleepWord(v: Int) = when (v) { in 1..2 -> "Very poor"; in 3..4 -> "Poor"; in 5..6 -> "Fair"; in 7..8 -> "Good"; else -> "Excellent" }
+
 @Composable
-private fun ScaleSlider(label: String, value: Int, low: String, high: String, onChange: (Int) -> Unit) {
-    Column {
-        Row {
-            Text(label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-            Text("$value / 10", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+private fun ScaleCard(
+    label: String,
+    icon: ImageVector,
+    color: Color,
+    value: Int,
+    low: String,
+    high: String,
+    word: (Int) -> String,
+    onChange: (Int) -> Unit
+) {
+    PanelCard(spacing = 6.dp, elevation = 6.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            IconBadge(icon, color, size = 40.dp)
+            Column(Modifier.weight(1f)) {
+                Text(label, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                Text(word(value), style = MaterialTheme.typography.labelMedium, color = color)
+            }
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text("$value", style = NumericStyle.copy(fontSize = MaterialTheme.typography.headlineMedium.fontSize), color = MaterialTheme.colorScheme.onSurface)
+                Text(" / 10", style = MaterialTheme.typography.labelMedium, color = AppTheme.colors.inkMuted, modifier = Modifier.padding(bottom = 5.dp))
+            }
         }
         Slider(
             value = value.toFloat(),
             onValueChange = { onChange(it.roundToInt()) },
             valueRange = 1f..10f,
-            steps = 8
+            steps = 8,
+            colors = SliderDefaults.colors(
+                thumbColor = color,
+                activeTrackColor = color,
+                inactiveTrackColor = color.copy(alpha = 0.16f),
+                activeTickColor = Color.White.copy(alpha = 0.6f),
+                inactiveTickColor = color.copy(alpha = 0.45f)
+            )
         )
         Row {
-            Text(low, style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
-            Text(high, style = MaterialTheme.typography.labelSmall)
+            Text(low, style = MaterialTheme.typography.labelMedium, color = AppTheme.colors.inkMuted, modifier = Modifier.weight(1f))
+            Text(high, style = MaterialTheme.typography.labelMedium, color = AppTheme.colors.inkMuted)
         }
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TensionPicker(label: String, value: Int?, onChange: (Int?) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(label, style = MaterialTheme.typography.titleSmall)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+            Text(value?.let { "$it / 10" } ?: "Tap to rate", style = MaterialTheme.typography.labelMedium, color = AppTheme.colors.inkMuted)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             (1..10).forEach { n ->
-                FilterChip(
-                    selected = value == n,
-                    onClick = { onChange(if (value == n) null else n) },
-                    label = { Text("$n") }
-                )
+                val on = value == n
+                val heat = lerpColor(Brand.Teal500, Brand.Stress, (n - 1) / 9f)
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .aspectRatio(0.82f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (on) Brush.verticalGradient(listOf(heat, heat.copy(alpha = 0.8f))) else Brush.verticalGradient(listOf(heat.copy(alpha = 0.10f), heat.copy(alpha = 0.10f))))
+                        .border(1.dp, if (on) heat else Color.Transparent, RoundedCornerShape(10.dp))
+                        .selectable(selected = on, role = Role.RadioButton) { onChange(if (on) null else n) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "$n",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
+                        color = if (on) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                    )
+                }
             }
         }
+    }
+}
+
+private fun lerpColor(a: Color, b: Color, t: Float) = Color(
+    red = a.red + (b.red - a.red) * t,
+    green = a.green + (b.green - a.green) * t,
+    blue = a.blue + (b.blue - a.blue) * t,
+    alpha = 1f
+)
+
+@Composable
+private fun TensionDelta(pre: Int, post: Int) {
+    val d = post - pre
+    val (icon, color) = when {
+        d < 0 -> Icons.AutoMirrored.Rounded.TrendingDown to AppTheme.colors.success
+        d > 0 -> Icons.AutoMirrored.Rounded.TrendingUp to AppTheme.colors.warning
+        else -> Icons.AutoMirrored.Rounded.TrendingFlat to AppTheme.colors.inkMuted
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(color.copy(alpha = 0.09f))
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(Modifier.size(36.dp).clip(CircleShape).background(color.copy(alpha = 0.16f)), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = color)
+        }
+        Text(
+            "Self-rated tension went from $pre to $post after today's practice.",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+        Pill(if (d > 0) "+$d" else "$d", color = color)
     }
 }

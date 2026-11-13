@@ -30,12 +30,19 @@ import com.companion.yogawellness.pose.PosePipeline
 import com.companion.yogawellness.pose.SensorSnapshot
 import com.companion.yogawellness.replay.SyntheticPoseBuilder
 import com.companion.yogawellness.scoring.ToleranceProfile
+import com.companion.yogawellness.ui.home.HomeContent
 import com.companion.yogawellness.ui.home.HomeScreen
+import com.companion.yogawellness.ui.home.HomeState
+import com.companion.yogawellness.wellness.ActivitySummary
+import com.companion.yogawellness.wellness.QuestionnaireType
 import com.companion.yogawellness.ui.practice.BottomPanel
 import com.companion.yogawellness.ui.practice.ExplainScoreContent
 import com.companion.yogawellness.ui.practice.PoseOverlay
 import com.companion.yogawellness.ui.practice.PracticeUiState
 import com.companion.yogawellness.ui.theme.YogaWellnessTheme
+import com.companion.yogawellness.wellness.MockPersonaSeeder
+import com.companion.yogawellness.wellness.Persona
+import java.time.LocalDate
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -160,8 +167,8 @@ class ScreenRenderTest {
         val out = warriorOutput(95.0)
         val rec = com.companion.yogawellness.data.SessionAutoRecorder.Rec(active = true, elapsedSec = 42, posesSaved = 2)
         setScreen {
+            // The REC badge is part of the bottom panel's recording strip (one badge on screen).
             Box(Modifier.fillMaxSize().background(Color(0xFF30363A))) {
-                com.companion.yogawellness.ui.practice.RecBadge(rec, Modifier.align(Alignment.TopEnd).padding(16.dp))
                 BottomPanel(
                     PracticeUiState(output = out, modelReady = true, rec = rec),
                     onExplain = {},
@@ -180,7 +187,7 @@ class ScreenRenderTest {
         setScreen {
             BottomPanel(PracticeUiState(output = null, modelReady = true), onExplain = {}, modifier = Modifier.fillMaxWidth(), onFinish = {})
         }
-        compose.onNodeWithText("∑ Explain Score").assertExists()
+        compose.onNodeWithContentDescription("Explain Score").assertExists()
         compose.onNodeWithText("Finish & Save").assertDoesNotExist()
     }
 
@@ -236,7 +243,7 @@ class ScreenRenderTest {
         // "Several days" on item 9 (the 9th "Several days" option on the screen)
         compose.onAllNodesWithText("Several days")[8].performScrollTo().performClick()
         compose.onNodeWithText("You don't have to go through this alone").assertExists()
-        compose.onNodeWithText("  Call Tele-MANAS 14416", substring = true).assertExists()
+        compose.onNodeWithText("Call Tele-MANAS 14416", substring = true).assertExists()
         save("phq9_crisis_sheet")
     }
 
@@ -273,7 +280,7 @@ class ScreenRenderTest {
             }
         }
         compose.onNodeWithText("Viewing demo data (Demo A · Consistent). Your own data is safe.").assertExists()
-        compose.onNodeWithText("👤 My Account").assertExists()
+        compose.onNodeWithText("My Account").assertExists() // chip text; the person icon replaced the emoji
         org.junit.Assert.assertEquals(1, compose.onAllNodesWithText("Back to My Account").fetchSemanticsNodes().size)
         save("profile_selector_demo_banner")
     }
@@ -404,6 +411,103 @@ class ScreenRenderTest {
     fun homeScreen() {
         setScreen { HomeScreen(onStartPractice = {}) }
         compose.onNodeWithText("Yoga Wellness Companion").assertExists()
+        compose.onNodeWithText("Start practice").assertExists()
         save("home")
+    }
+
+    /** Home state built from a demo persona (42 days), without going through the database. */
+    private fun personaHome(persona: Persona = Persona.A_CONSISTENT): HomeState {
+        val today = LocalDate.now().toEpochDay()
+        val d = MockPersonaSeeder.generate(persona, today)
+        fun latest(t: QuestionnaireType) = d.questionnaires.filter { it.type == t.name }.maxByOrNull { it.epochDay }
+        return HomeState(
+            today = d.checkIns.firstOrNull { it.epochDay == today },
+            phq = latest(QuestionnaireType.PHQ9),
+            gad = latest(QuestionnaireType.GAD7),
+            activity = ActivitySummary.from(d.checkIns, d.sessions.map { it.session }, today),
+            todayEpochDay = today,
+            profile = ToleranceProfile.STANDARD
+        )
+    }
+
+    private fun renderHome(state: HomeState) = setScreen {
+        HomeContent(state, onProfile = {}, onStartPractice = {}, onCheckIn = {}, onQuestionnaire = {}, onDashboard = {}, onSettings = {})
+    }
+
+    /** Full-length home with 42 days of demo history (tall viewport, for design review). */
+    @Test
+    @Config(qualifiers = "w360dp-h2600dp-xxhdpi")
+    fun homeScreenWithHistoryFullLength() {
+        renderHome(personaHome())
+        compose.onNodeWithText("Your vitals today").assertExists()
+        compose.onNodeWithText("Pose library").assertExists()
+        save("home_full_persona_a")
+    }
+
+    /** Same screen in dark theme. */
+    @Test
+    @Config(qualifiers = "w360dp-h2600dp-night-xxhdpi")
+    fun homeScreenDarkFullLength() {
+        renderHome(personaHome())
+        save("home_full_dark")
+    }
+
+    /** First run: nothing logged yet. */
+    @Test
+    fun homeScreenFirstRun() {
+        val today = LocalDate.now().toEpochDay()
+        renderHome(HomeState(null, null, null, ActivitySummary.empty(today), today, ToleranceProfile.STANDARD))
+        compose.onNodeWithText("Check in now").assertExists()
+        save("home_first_run")
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h2400dp-xxhdpi")
+    fun consentScreenFullLength() {
+        setScreen { com.companion.yogawellness.ui.consent.ConsentAndSafetyScreen(onAccepted = {}) }
+        compose.onNodeWithText("I will practise safely and stop if anything hurts.").performClick()
+        save("consent_full")
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h1700dp-xxhdpi")
+    fun checkInScreenFullLength() {
+        setScreen { com.companion.yogawellness.ui.wellness.CheckInScreen(onDone = {}) }
+        save("checkin_full")
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h3000dp-xxhdpi")
+    fun dashboardScreenFullLength() {
+        val data = com.companion.yogawellness.wellness.DashboardBuilderTest().personaDashboard(Persona.A_CONSISTENT)
+        setScreen {
+            com.companion.yogawellness.ui.dashboard.DashboardScreenContent(
+                data, Persona.A_CONSISTENT.label, error = null, onBack = {}, onExport = {}
+            )
+        }
+        compose.onNodeWithText("Weekly trend").assertExists()
+        save("dashboard_full")
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h1900dp-xxhdpi")
+    fun settingsScreenFullLength() {
+        setScreen { com.companion.yogawellness.ui.settings.SettingsScreen(onBack = {}, onDataDeleted = {}) }
+        save("settings_full")
+    }
+
+    @Test
+    fun practiceLoadingState() {
+        setScreen {
+            Box(Modifier.fillMaxSize().background(Color(0xFF30363A))) {
+                BottomPanel(
+                    PracticeUiState(output = null, modelReady = true),
+                    onExplain = {},
+                    modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(10.dp)
+                )
+            }
+        }
+        compose.onNodeWithText("Set up your space").assertExists()
+        save("practice_setup")
     }
 }

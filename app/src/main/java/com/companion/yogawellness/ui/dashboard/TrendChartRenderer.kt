@@ -25,13 +25,13 @@ data class ChartColors(
 ) {
     companion object {
         val Light = ChartColors(
-            surface = 0xFFFFFCF6.toInt(), inkPrimary = 0xFF0B0B0B.toInt(), inkSecondary = 0xFF52514E.toInt(),
-            muted = 0xFF898781.toInt(), grid = 0xFFE1E0D9.toInt(), axis = 0xFFC3C2B7.toInt(),
+            surface = 0xFFFFFFFF.toInt(), inkPrimary = 0xFF0F1B2D.toInt(), inkSecondary = 0xFF4A5A6E.toInt(),
+            muted = 0xFF7D8BA0.toInt(), grid = 0xFFE6ECF2.toInt(), axis = 0xFFC5D0DC.toInt(),
             quality = 0xFF2A78D6.toInt(), stress = 0xFFEB6834.toInt(), mood = 0xFF1BAF7A.toInt()
         )
         val Dark = ChartColors(
-            surface = 0xFF1A1C1B.toInt(), inkPrimary = 0xFFF0EFEC.toInt(), inkSecondary = 0xFFC3C2B7.toInt(),
-            muted = 0xFF898781.toInt(), grid = 0xFF2C2C2A.toInt(), axis = 0xFF383835.toInt(),
+            surface = 0xFF0C1828.toInt(), inkPrimary = 0xFFE6EDF5.toInt(), inkSecondary = 0xFFA9B7C9.toInt(),
+            muted = 0xFF7D8CA3.toInt(), grid = 0xFF1A2A40.toInt(), axis = 0xFF2B3D57.toInt(),
             quality = 0xFF3987E5.toInt(), stress = 0xFFD95926.toInt(), mood = 0xFF199E70.toInt()
         )
     }

@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
@@ -50,14 +51,14 @@ import kotlin.math.sqrt
 
 /** Colours of the demo figure (§5.4). */
 object DemoColors {
-    val Background = Color(0xFF0F172A)
-    val PeakBone = Color(0xFF10B981)      // emerald: at the peak / hold
+    val Background = Color(0xFF071A2F)    // brand navy
+    val PeakBone = Color(0xFF5EEAD4)      // brand mint: at the peak / hold
     val MovingBone = Color(0xFF38BDF8)    // cyan: entering or leaving the pose
     val Joint = Color(0xFFE2E8F0)
-    val Floor = Color(0xFF475569)
+    val Floor = Color(0xFF2B4A6B)
     val Plumb = Color(0x80E2E8F0)
     val Arc = Color(0xFFFBBF24)
-    val PillBg = Color(0xE6111827)
+    val PillBg = Color(0xE6071A2F)
     val PillText = Color.White
 }
 
@@ -376,8 +377,8 @@ fun SkeletonDemoCanvas(
     Canvas(
         modifier
             .aspectRatio(4f / 5f)
-            .clip(RoundedCornerShape(16.dp))
-            .background(DemoColors.Background)
+            .clip(RoundedCornerShape(22.dp))
+            .background(Brush.verticalGradient(listOf(Color(0xFF0B2A4A), DemoColors.Background)))
             .semantics { contentDescription = description }
     ) {
         if (version < 0) return@Canvas // draw-phase read: redraw on every solved frame
@@ -392,7 +393,7 @@ fun SkeletonThumbnail(item: AsanaCodexItem, view: CodexView, modifier: Modifier 
     Canvas(
         modifier
             .aspectRatio(4f / 5f)
-            .clip(RoundedCornerShape(10.dp))
-            .background(DemoColors.Background)
+            .clip(RoundedCornerShape(14.dp))
+            .background(Brush.verticalGradient(listOf(Color(0xFF0B2A4A), DemoColors.Background)))
     ) { drawDemoFrame(frame, null, null, showPlumb = false) }
 }

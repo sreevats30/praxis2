@@ -8,10 +8,14 @@ import com.companion.yogawellness.data.ProfileIds
 import com.companion.yogawellness.data.db.DailyCheckInEntity
 import com.companion.yogawellness.data.db.QuestionnaireEntity
 import com.companion.yogawellness.scoring.ToleranceProfile
+import com.companion.yogawellness.wellness.ActivitySummary
 import com.companion.yogawellness.wellness.Persona
 import com.companion.yogawellness.wellness.QuestionnaireType
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -38,6 +42,15 @@ class WellnessViewModel(app: Application) : AndroidViewModel(app) {
 
     /** The dataset currently viewed in dashboard/history (My Account or a demo persona). */
     val activeProfileId: StateFlow<String> = container.activeProfile.id
+
+    /** Week strip, streak and sparklines for the home screen — always the user's own data. */
+    val activity: StateFlow<ActivitySummary> = flowState(
+        ActivitySummary.empty(todayEpochDay),
+        combine(
+            repo.observeCheckInsSince(todayEpochDay - (ActivitySummary.LOOKBACK_DAYS - 1), me),
+            repo.observeSessionsSince(todayEpochDay - (ActivitySummary.LOOKBACK_DAYS - 1), me)
+        ) { checkIns, sessions -> ActivitySummary.from(checkIns, sessions, todayEpochDay) }.flowOn(Dispatchers.Default)
+    )
 
     fun history(type: QuestionnaireType) = if (type == QuestionnaireType.PHQ9) phqHistory else gadHistory
     fun latest(type: QuestionnaireType) = if (type == QuestionnaireType.PHQ9) latestPhq else latestGad
