@@ -7,15 +7,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.Science
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,7 +23,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
@@ -43,6 +38,7 @@ import kotlinx.coroutines.launch
 /** Stateless row of profile chips. [busyId] shows a spinner while that demo is being seeded. */
 @Composable
 fun ProfileSelector(activeId: String, busyId: String?, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
+    val c = AppTheme.colors
     Row(
         modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -50,41 +46,22 @@ fun ProfileSelector(activeId: String, busyId: String?, onSelect: (String) -> Uni
     ) {
         (listOf(ProfileIds.MY_ACCOUNT) + ProfileIds.DEMO_IDS).forEach { id ->
             val selected = id == activeId
-            val accent = if (ProfileIds.isDemo(id)) AppTheme.colors.warning else MaterialTheme.colorScheme.primary
             Row(
                 Modifier
-                    .clip(CircleShape)
-                    .background(if (selected) accent else MaterialTheme.colorScheme.surface)
-                    .border(1.dp, if (selected) accent else AppTheme.colors.cardBorder, CircleShape)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (selected) c.text else c.surface)
+                    .border(1.dp, if (selected) c.text else c.border, RoundedCornerShape(8.dp))
                     .selectable(selected = selected, enabled = busyId == null, role = Role.Tab, onClick = { onSelect(id) })
                     .semantics { contentDescription = "Show ${ProfileIds.displayName(id)}" }
-                    .padding(start = 6.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
+                    .heightIn(min = 36.dp)
+                    .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Box(
-                    Modifier
-                        .size(26.dp)
-                        .clip(CircleShape)
-                        .background(if (selected) Color.White.copy(alpha = 0.25f) else accent.copy(alpha = 0.13f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (busyId == id) {
-                        CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp, color = if (selected) Color.White else accent)
-                    } else {
-                        Icon(
-                            if (ProfileIds.isDemo(id)) Icons.Rounded.Science else Icons.Rounded.Person,
-                            contentDescription = null,
-                            tint = if (selected) Color.White else accent,
-                            modifier = Modifier.size(15.dp)
-                        )
-                    }
+                if (busyId == id) {
+                    CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp, color = if (selected) c.surface else c.textSecondary)
                 }
-                Text(
-                    chipText(id),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (selected) Color.White else MaterialTheme.colorScheme.onSurface
-                )
+                Text(chipText(id), style = MaterialTheme.typography.labelLarge, color = if (selected) c.surface else c.text)
             }
         }
     }

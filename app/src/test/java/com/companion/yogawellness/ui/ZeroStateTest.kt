@@ -11,6 +11,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.test.core.app.ApplicationProvider
 import com.companion.yogawellness.YogaWellnessApp
@@ -68,8 +69,8 @@ class ZeroStateTest {
         compose.waitForIdle()
         compose.onNodeWithText("How are you today?").assertExists()
         compose.onNodeWithText("Check in now").assertExists()
-        compose.onNodeWithText("0 / 7 active").assertExists()
-        compose.onNodeWithText("0 min").performScrollTo().assertExists()
+        compose.onNodeWithText("0 of 7 days active").assertExists()
+        compose.onNode(hasText("Practice") and hasText("0") and hasText(" min")).performScrollTo().assertExists()
         assertEquals(0, compose.onAllNodesWithText("day streak", substring = true).fetchSemanticsNodes().size)
         assertEquals(0, compose.onAllNodesWithText("Your vitals today").fetchSemanticsNodes().size)
     }

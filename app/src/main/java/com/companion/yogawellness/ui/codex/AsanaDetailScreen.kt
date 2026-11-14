@@ -1,30 +1,14 @@
 package com.companion.yogawellness.ui.codex
 
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.exponentialDecay
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.withInfiniteAnimationFrameNanos
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.material.icons.rounded.SwipeLeft
-import androidx.compose.material.icons.rounded._360
-import androidx.compose.runtime.MutableFloatState
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChange
-import androidx.compose.ui.input.pointer.util.VelocityTracker
-import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.customActions
-import androidx.compose.ui.semantics.stateDescription
-import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,47 +16,36 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Accessibility
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.ErrorOutline
-import androidx.compose.material.icons.rounded.FormatListNumbered
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.SelfImprovement
-import androidx.compose.material.icons.rounded.Straighten
-import androidx.compose.material.icons.rounded.Timer
-import androidx.compose.material.icons.rounded.Videocam
-import androidx.compose.material.icons.rounded.WarningAmber
-import androidx.compose.material.icons.rounded.WbSunny
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.SwipeLeft
+import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material.icons.outlined.Videocam
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableFloatState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -80,26 +53,39 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.companion.yogawellness.codex.AsanaCatalog32
 import com.companion.yogawellness.codex.AsanaCodexItem
 import com.companion.yogawellness.codex.CodexText
 import com.companion.yogawellness.codex.CodexView
+import com.companion.yogawellness.codex.Difficulty
 import com.companion.yogawellness.scoring.Asana
-import com.companion.yogawellness.ui.components.Callout
-import com.companion.yogawellness.ui.components.ClinicalTopBar
-import com.companion.yogawellness.ui.components.GlassPill
-import com.companion.yogawellness.ui.components.GradientButton
-import com.companion.yogawellness.ui.components.IconBadge
-import com.companion.yogawellness.ui.components.Overline
-import com.companion.yogawellness.ui.components.PanelCard
+import com.companion.yogawellness.ui.components.AppScreen
+import com.companion.yogawellness.ui.components.Hairline
+import com.companion.yogawellness.ui.components.Notice
+import com.companion.yogawellness.ui.components.Panel
+import com.companion.yogawellness.ui.components.PrimaryButton
+import com.companion.yogawellness.ui.components.ScreenColumn
+import com.companion.yogawellness.ui.components.SectionLabel
+import com.companion.yogawellness.ui.components.Segmented
+import com.companion.yogawellness.ui.components.Tag
+import com.companion.yogawellness.ui.components.Tone
 import com.companion.yogawellness.ui.practice.animationsDisabled
 import com.companion.yogawellness.ui.theme.AppTheme
-import com.companion.yogawellness.ui.theme.Brand
-import com.companion.yogawellness.ui.theme.ScoreColors
+import com.companion.yogawellness.ui.theme.NumericStyle
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 /** Route entry: looks the pose up by id; an unknown id shows "Pose not found". */
 @Composable
@@ -150,47 +136,26 @@ fun AsanaDetailContent(
     var showAngles by rememberSaveable(item.id) { mutableStateOf(true) }
     val breathTime = remember(item.id) { mutableFloatStateOf(0f) }
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            ClinicalTopBar(
-                title = item.englishName,
-                subtitle = "${item.number}. ${item.sanskritName}",
-                onBack = onBack,
-                bottom = {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        GlassPill(item.category.shortTitle)
-                        GlassPill(item.difficulty.label, iconTint = Brand.Gold)
-                        GlassPill("Hold about ${item.recommendedHoldSec} s", icon = Icons.Rounded.Timer)
-                        if (item.isLive) GlassPill("Live-scored", icon = Icons.Rounded.Videocam)
-                    }
-                }
-            )
-        }
-    ) { inner ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(inner)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            Text(
-                "${item.number}. ${item.sanskritName}",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.semantics { heading() }
-            )
-            Callout("Daily-life benefit: ${item.everydayBenefit}", Icons.Rounded.WbSunny, AppTheme.colors.info)
+    val c = AppTheme.colors
 
-            // Demo + controls
-            PanelCard(
-                color = AppTheme.colors.heroStart,
-                borderColor = null,
-                contentPadding = PaddingValues(10.dp),
-                spacing = 10.dp
-            ) {
+    AppScreen(title = item.englishName, onBack = onBack) { inner ->
+        ScreenColumn(inner, spacing = 12.dp) {
+            Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    "${item.number}. ${item.sanskritName}", style = MaterialTheme.typography.headlineSmall, color = c.text,
+                    modifier = Modifier.semantics { heading() }
+                )
+                Text(item.englishName, style = MaterialTheme.typography.bodyLarge, color = c.textSecondary)
+            }
+            FlowRow(Modifier.padding(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Tag(item.category.shortTitle)
+                Tag(item.difficulty.label, tone = if (item.difficulty == Difficulty.INTERMEDIATE) Tone.WARNING else Tone.NEUTRAL)
+                Tag("Hold about ${item.recommendedHoldSec} s")
+                if (item.isLive) Tag("Live-scored", tone = Tone.ACCENT)
+            }
+
+            // 3D viewer + controls
+            Panel(color = DemoColors.Viewer.background, border = null, contentPadding = PaddingValues(8.dp), spacing = 8.dp) {
                 RotatableDemo(
                     item = item,
                     playing = playing,
@@ -209,44 +174,24 @@ fun AsanaDetailContent(
                 )
                 // FlowRows so the controls wrap instead of clipping at large font sizes.
                 FlowRow(
-                    Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                    Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Surface(
-                        onClick = { playing = !playing },
-                        shape = RoundedCornerShape(14.dp),
-                        color = Brand.Mint,
-                        contentColor = Brand.Navy900,
-                        modifier = Modifier.heightIn(min = 44.dp)
-                    ) {
-                        Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
-                            Text(if (playing) "Pause at peak" else "Play", style = MaterialTheme.typography.labelLarge)
-                        }
-                    }
-                    Segmented(listOf("0.5×", "1×"), if (halfSpeed) 0 else 1) { halfSpeed = it == 0 }
-                    Surface(
-                        onClick = { autoRotate = !autoRotate },
-                        shape = RoundedCornerShape(14.dp),
-                        color = if (autoRotate) Color.White else Color.White.copy(alpha = 0.10f),
-                        contentColor = if (autoRotate) Brand.Navy900 else Color.White,
-                        modifier = Modifier
-                            .heightIn(min = 44.dp)
-                            .semantics { stateDescription = if (autoRotate) "On" else "Off" }
-                    ) {
-                        Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Icon(Icons.Rounded._360, contentDescription = null, modifier = Modifier.size(20.dp))
-                            Text("Auto-rotate", style = MaterialTheme.typography.labelLarge)
-                        }
-                    }
+                    ViewerButton(
+                        if (playing) "Pause at peak" else "Play",
+                        if (playing) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
+                        filled = true
+                    ) { playing = !playing }
+                    Segmented(listOf("0.5×", "1×"), if (halfSpeed) 0 else 1, { halfSpeed = it == 0 }, onDark = true)
+                    ViewerButton("Auto-rotate", Icons.Outlined.Sync, filled = autoRotate, stateOn = autoRotate) { autoRotate = !autoRotate }
                 }
                 FlowRow(
-                    Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                    Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Segmented(VIEW_PRESETS.map { it.first }, presetIndex) { goToYaw(VIEW_PRESETS[it].second) }
+                    Segmented(VIEW_PRESETS.map { it.first }, presetIndex, { goToYaw(VIEW_PRESETS[it].second) }, onDark = true)
                     Row(
                         Modifier
                             .heightIn(min = 48.dp)
@@ -258,76 +203,109 @@ fun AsanaDetailContent(
                         Text("Show angles", style = MaterialTheme.typography.labelLarge, color = Color.White)
                         Switch(
                             checked = showAngles, onCheckedChange = null,
-                            colors = SwitchDefaults.colors(checkedTrackColor = Brand.Teal500, checkedThumbColor = Color.White)
+                            colors = SwitchDefaults.colors(
+                                checkedTrackColor = DemoColors.Viewer.peakBone, checkedThumbColor = Color.White,
+                                uncheckedTrackColor = Color.White.copy(alpha = 0.12f), uncheckedThumbColor = Color.White.copy(alpha = 0.7f),
+                                uncheckedBorderColor = Color.Transparent
+                            )
                         )
                     }
                 }
             }
 
-            PanelCard(spacing = 10.dp, elevation = 6.dp) {
-                Overline("Breathe", color = AppTheme.colors.inkMuted)
+            Panel(spacing = 6.dp) {
+                Text("Everyday benefit", style = MaterialTheme.typography.labelMedium, color = c.textTertiary)
+                Text("Daily-life benefit: ${item.everydayBenefit}", style = MaterialTheme.typography.bodyMedium, color = c.text)
+            }
+            Panel(spacing = 10.dp) {
+                Text("Breathing", style = MaterialTheme.typography.labelMedium, color = c.textTertiary)
                 BreathPacer(item.breath, breathTime)
             }
 
-            DetailSection("Key angles", Icons.Rounded.Straighten, MaterialTheme.colorScheme.primary) {
-                item.callouts.forEach { c ->
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Box(
-                            Modifier
-                                .size(width = 54.dp, height = 34.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(Brand.Gold.copy(alpha = 0.16f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("${c.targetDeg}°", style = MaterialTheme.typography.labelLarge, color = Color(0xFF92400E))
+            SectionLabel("Key angles")
+            Panel(contentPadding = PaddingValues(0.dp), spacing = 0.dp) {
+                item.callouts.forEachIndexed { i, co ->
+                    if (i > 0) Hairline(inset = 16.dp)
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(co.label, style = MaterialTheme.typography.bodyMedium, color = c.text)
+                            Text(co.joint.description, style = MaterialTheme.typography.bodySmall, color = c.textTertiary)
                         }
-                        Text("${c.label}: ${c.targetDeg}° — ${c.joint.description}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                        Text("${co.targetDeg}°", style = NumericStyle.copy(fontSize = MaterialTheme.typography.titleMedium.fontSize), color = c.text)
                     }
                 }
             }
-            DetailSection("Steps", Icons.Rounded.FormatListNumbered, Brand.Practice) {
+            SectionLabel("Steps")
+            Panel(spacing = 12.dp) {
                 item.steps.forEachIndexed { i, step ->
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Box(
-                            Modifier.size(26.dp).clip(CircleShape).background(Brand.Practice.copy(alpha = 0.14f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("${i + 1}", style = MaterialTheme.typography.labelLarge, color = Brand.Practice)
-                        }
-                        Text("${i + 1}. $step", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 3.dp))
+                        Text("${i + 1}", style = NumericStyle.copy(fontSize = MaterialTheme.typography.bodyMedium.fontSize), color = c.textTertiary, modifier = Modifier.width(16.dp))
+                        Text(step, style = MaterialTheme.typography.bodyMedium, color = c.text, modifier = Modifier.weight(1f))
                     }
                 }
             }
-            DetailSection("Common mistakes", Icons.Rounded.ErrorOutline, ScoreColors.Red) {
-                item.commonMistakes.forEach { BulletRow(it, Icons.Rounded.Close, ScoreColors.Red) }
-            }
+            SectionLabel("Common mistakes")
+            Panel(spacing = 10.dp) { item.commonMistakes.forEach { Bullet(it) } }
             if (item.modifications.isNotEmpty()) {
-                DetailSection("Make it easier", Icons.Rounded.Accessibility, ScoreColors.Green) {
-                    item.modifications.forEach { BulletRow(it, Icons.Rounded.Check, ScoreColors.Green) }
-                }
+                SectionLabel("Make it easier")
+                Panel(spacing = 10.dp) { item.modifications.forEach { Bullet(it) } }
             }
-            Callout(item.safety, Icons.Rounded.WarningAmber, ScoreColors.Amber, title = "Safety") {
-                Text(CodexText.GLOBAL_DISCLAIMER, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Notice(item.safety, Icons.Outlined.WarningAmber, tone = Tone.WARNING, title = "Safety") {
+                Text(CodexText.GLOBAL_DISCLAIMER, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
             }
             val live = item.liveAsana
             if (live != null) {
-                GradientButton("Practice this live", { onPracticeLive(live) }, Modifier.fillMaxWidth(), icon = Icons.Rounded.Videocam)
+                PrimaryButton("Practice this live", { onPracticeLive(live) }, Modifier.fillMaxWidth().padding(top = 4.dp), icon = Icons.Outlined.Videocam)
             } else {
                 // Deliberately not a button: these poses are never scored or recorded.
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
-                        .padding(14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Rounded.SelfImprovement, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Text(CodexText.FOLLOW_ALONG_NOTE, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+                Text(
+                    CodexText.FOLLOW_ALONG_NOTE,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = c.textTertiary,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
             }
-            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+/** Button on the dark viewer: filled (light) or translucent. */
+@Composable
+private fun ViewerButton(text: String, icon: ImageVector, filled: Boolean, stateOn: Boolean? = null, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(10.dp),
+        color = if (filled) Color.White else Color.White.copy(alpha = 0.10f),
+        contentColor = if (filled) Color(0xFF111418) else Color.White,
+        modifier = Modifier
+            .heightIn(min = 40.dp)
+            .then(if (stateOn != null) Modifier.semantics { stateDescription = if (stateOn) "On" else "Off" } else Modifier)
+    ) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+            Text(text, style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+@Composable
+private fun Bullet(text: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Box(Modifier.padding(top = 8.dp).size(4.dp).clip(CircleShape).background(AppTheme.colors.textTertiary))
+        Text(text, style = MaterialTheme.typography.bodyMedium, color = AppTheme.colors.text, modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun PoseNotFound(onBack: () -> Unit) {
+    AppScreen(title = "Learn", onBack = onBack) { inner ->
+        ScreenColumn(inner) {
+            Text("Pose not found", style = MaterialTheme.typography.titleMedium, color = AppTheme.colors.text)
+            PrimaryButton("Back to Learn", onBack)
         }
     }
 }
@@ -457,9 +435,9 @@ private fun RotatableDemo(
             Modifier
                 .align(Alignment.TopEnd)
                 .padding(10.dp)
-                .clip(CircleShape)
-                .background(Color(0xCC07111F))
-                .padding(horizontal = 10.dp, vertical = 5.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color.Black.copy(alpha = 0.55f))
+                .padding(horizontal = 8.dp, vertical = 4.dp)
                 .clearAndSetSemantics {
                     contentDescription = "Rotation ${normalizeDeg(yaw.value).roundToInt() % 360}°" +
                         if (tilt.value >= 1f) ", tilt ${tilt.value.roundToInt()}°" else ""
@@ -467,8 +445,7 @@ private fun RotatableDemo(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {
-            Icon(Icons.Rounded._360, contentDescription = null, tint = Brand.Mint, modifier = Modifier.size(14.dp))
-            Text("${normalizeDeg(yaw.value).roundToInt() % 360}°", style = MaterialTheme.typography.labelMedium, color = Color.White)
+            Text("${normalizeDeg(yaw.value).roundToInt() % 360}°", style = NumericStyle.copy(fontSize = MaterialTheme.typography.labelMedium.fontSize), color = Color.White)
             if (tilt.value >= 1f) {
                 Text("· tilt ${tilt.value.roundToInt()}°", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.75f))
             }
@@ -479,13 +456,13 @@ private fun RotatableDemo(
                 Modifier
                     .align(Alignment.TopStart)
                     .padding(10.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color(0xCC07111F))
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.Black.copy(alpha = 0.55f))
                     .padding(horizontal = 10.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(Icons.Rounded.SwipeLeft, contentDescription = null, tint = Brand.Mint, modifier = Modifier.size(18.dp))
+                Icon(Icons.Outlined.SwipeLeft, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                 Column {
                     Text("Drag to rotate 360°", style = MaterialTheme.typography.labelMedium, color = Color.White)
                     Text("Two fingers to tilt", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.7f))
@@ -495,66 +472,3 @@ private fun RotatableDemo(
     }
 }
 
-/** Pill segmented control on the dark demo card. */
-@Composable
-private fun Segmented(labels: List<String>, selected: Int, onSelect: (Int) -> Unit) {
-    Row(
-        Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.10f))
-            .padding(3.dp)
-            .selectableGroup(),
-        horizontalArrangement = Arrangement.spacedBy(2.dp)
-    ) {
-        labels.forEachIndexed { i, label ->
-            val on = i == selected
-            Box(
-                Modifier
-                    .heightIn(min = 36.dp)
-                    .clip(RoundedCornerShape(9.dp))
-                    .background(if (on) Color.White else Color.Transparent)
-                    .selectable(selected = on, role = Role.RadioButton, onClick = { onSelect(i) })
-                    .padding(horizontal = 12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(label, style = MaterialTheme.typography.labelLarge, color = if (on) Brand.Navy900 else Color.White.copy(alpha = 0.85f))
-            }
-        }
-    }
-}
-
-@Composable
-private fun DetailSection(title: String, icon: ImageVector, accent: Color, content: @Composable () -> Unit) {
-    PanelCard(spacing = 12.dp, elevation = 6.dp) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            IconBadge(icon, accent, size = 34.dp)
-            Text(
-                title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.semantics { heading() }
-            )
-        }
-        content()
-    }
-}
-
-@Composable
-private fun BulletRow(text: String, icon: ImageVector, color: Color) {
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.padding(top = 2.dp).size(16.dp))
-        Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-    }
-}
-
-@Composable
-private fun PoseNotFound(onBack: () -> Unit) {
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = { ClinicalTopBar(title = "Learn", onBack = onBack) }
-    ) { inner ->
-        Column(Modifier.padding(inner).padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            IconBadge(Icons.Rounded.Search, MaterialTheme.colorScheme.primary, size = 52.dp)
-            Text("Pose not found", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
-            GradientButton("Back to Learn", onBack, Modifier.fillMaxWidth())
-        }
-    }
-}

@@ -336,7 +336,8 @@ class ScreenRenderTest {
                 com.companion.yogawellness.ui.history.HistoryUiState(loading = false), onStartPractice = {}, onDelete = {}
             )
         }
-        compose.onNodeWithText("No sessions yet. Start a practice — every pose you hold for 2 seconds is saved here.").assertExists()
+        compose.onNodeWithText("No sessions yet").assertExists()
+        compose.onNodeWithText("Start a practice — every pose you hold for 2 seconds is saved here.").assertExists()
         compose.onNodeWithText("Start practice").assertExists()
         save("history_empty")
     }
@@ -410,7 +411,7 @@ class ScreenRenderTest {
     @Test
     fun homeScreen() {
         setScreen { HomeScreen(onStartPractice = {}) }
-        compose.onNodeWithText("Yoga Wellness Companion").assertExists()
+        compose.onNodeWithText("Today").assertExists()
         compose.onNodeWithText("Start practice").assertExists()
         save("home")
     }
@@ -439,8 +440,8 @@ class ScreenRenderTest {
     @Config(qualifiers = "w360dp-h2600dp-xxhdpi")
     fun homeScreenWithHistoryFullLength() {
         renderHome(personaHome())
-        compose.onNodeWithText("Your vitals today").assertExists()
-        compose.onNodeWithText("Pose library").assertExists()
+        compose.onNodeWithText("Edit").assertExists()
+        compose.onNodeWithText("Poses").assertExists()
         save("home_full_persona_a")
     }
 
