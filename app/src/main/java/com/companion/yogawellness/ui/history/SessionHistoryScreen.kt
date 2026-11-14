@@ -301,9 +301,8 @@ private fun DateBadge(startedAtMs: Long, accent: Color) {
 @Composable
 private fun SessionCard(item: SessionWithPoses, expanded: Boolean, onToggle: () -> Unit, onDelete: (() -> Unit)?) {
     val s = item.session
-    val manual = s.source == PracticeSessionEntity.SOURCE_MANUAL
     val when_ = formatSessionTime(s.startedAtMs)
-    val accent = if (manual) AppTheme.colors.inkMuted else s.meanScore?.let { scoreColor(it) } ?: MaterialTheme.colorScheme.primary
+    val accent = s.meanScore?.let { scoreColor(it) } ?: MaterialTheme.colorScheme.primary
     PanelCard(contentPadding = PaddingValues(0.dp), spacing = 0.dp, elevation = 6.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Row(
@@ -320,20 +319,14 @@ private fun SessionCard(item: SessionWithPoses, expanded: Boolean, onToggle: () 
                     Text(when_, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         InfoChip(HistoryAggregator.formatDuration(s.activeSec), icon = Icons.Rounded.Timer)
-                        if (manual) {
-                            InfoChip("Manual", icon = Icons.Rounded.EditNote)
-                        } else {
-                            s.meanScore?.let { InfoChip("${it.toInt()}% align", dot = scoreColor(it)) }
-                            HistoryAggregator.stability(item.poses)?.let { InfoChip("${it.toInt()}% stab") }
-                        }
+                        s.meanScore?.let { InfoChip("${it.toInt()}% align", dot = scoreColor(it)) }
+                        HistoryAggregator.stability(item.poses)?.let { InfoChip("${it.toInt()}% stab") }
                     }
-                    if (!manual) {
-                        Text(
-                            "${item.poses.size} ${if (item.poses.size == 1) "pose" else "poses"}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = AppTheme.colors.inkMuted
-                        )
-                    }
+                    Text(
+                        "${item.poses.size} ${if (item.poses.size == 1) "pose" else "poses"}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = AppTheme.colors.inkMuted
+                    )
                 }
                 Icon(
                     if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
@@ -350,9 +343,6 @@ private fun SessionCard(item: SessionWithPoses, expanded: Boolean, onToggle: () 
         if (expanded) {
             Column(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 HorizontalDivider(color = AppTheme.colors.hairline)
-                if (manual) {
-                    Text("Logged by hand — no pose data or score.", style = MaterialTheme.typography.bodySmall, color = AppTheme.colors.inkMuted)
-                }
                 item.poses.forEach { PoseRow(it) }
             }
         }
