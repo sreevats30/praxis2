@@ -40,7 +40,7 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.FiberManualRecord
-import androidx.compose.material.icons.rounded.Functions
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Straighten
@@ -56,6 +56,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,14 +71,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -88,21 +90,20 @@ import com.companion.yogawellness.pose.PreflightResult
 import com.companion.yogawellness.replay.DemoClips
 import com.companion.yogawellness.scoring.Asana
 import com.companion.yogawellness.scoring.CameraAngle
-import com.companion.yogawellness.ui.components.GradientButton
-import com.companion.yogawellness.ui.components.IconBadge
+import com.companion.yogawellness.ui.components.PrimaryButton
 import com.companion.yogawellness.ui.components.PoseGlyph
-import com.companion.yogawellness.ui.components.RingGauge
-import com.companion.yogawellness.ui.theme.Brand
+import com.companion.yogawellness.ui.components.Ring
 import com.companion.yogawellness.ui.theme.NumericStyle
-import com.companion.yogawellness.ui.theme.OverlineStyle
 import com.companion.yogawellness.ui.theme.ScoreColors
 import kotlinx.coroutines.delay
 import java.io.File
 import java.util.Locale
 
-/** HUD surfaces over the camera feed: deep navy glass with a hairline edge. */
-private val HudGlass = Color(0xBF07111F)
-private val HudEdge = Color.White.copy(alpha = 0.12f)
+/** HUD over the camera feed: flat translucent black, hairline edge, one accent. */
+private val HudGlass = Color(0xB8000000)
+private val HudEdge = Color.White.copy(alpha = 0.10f)
+private val HudAccent = Color(0xFF5CC8C2)
+private val HudInk = Color(0xFF111418)
 
 @Composable
 fun PracticeScreen(
@@ -130,6 +131,16 @@ fun PracticeScreen(
         }
     }
 
+    // Black camera screen: light status-bar icons while it is shown, restored on leave.
+    val view = LocalView.current
+    DisposableEffect(view) {
+        val window = view.context.findActivity()?.window
+        val controller = window?.let { WindowCompat.getInsetsController(it, view) }
+        val previous = controller?.isAppearanceLightStatusBars
+        controller?.isAppearanceLightStatusBars = false
+        onDispose { if (previous != null) controller.isAppearanceLightStatusBars = previous }
+    }
+
     LifecycleStartEffect(vm) {
         vm.onStart()
         onStopOrDispose {
@@ -142,7 +153,7 @@ fun PracticeScreen(
     Box(
         Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Brand.Navy950, Color.Black)))
+            .background(Color.Black)
     ) {
         if (!state.isReplaying) {
             if (hasCamera) {
@@ -213,7 +224,7 @@ fun PracticeScreen(
             state.output?.safety?.let { SafetyAlertBanner(it.message) }
             state.output?.preflight?.let { if (!state.output!!.scoringArmed) PreflightPill(it) }
             (cameraError ?: state.error)?.let { ErrorPill(it) }
-            state.message?.let { HudPill(it, Icons.Rounded.CheckCircle, Brand.Mint) }
+            state.message?.let { HudPill(it, Icons.Rounded.CheckCircle, HudAccent) }
         }
 
         BottomPanel(
@@ -292,11 +303,11 @@ private fun LiveChip(replaying: Boolean, fps: Double) {
                 .size(8.dp)
                 .graphicsLayer { this.alpha = alpha }
                 .clip(CircleShape)
-                .background(if (replaying) Brand.Cyan else ScoreColors.Red)
+                .background(if (replaying) HudAccent else ScoreColors.Red)
         )
-        Text(if (replaying) "REPLAY" else "LIVE", style = OverlineStyle, color = Color.White)
+        Text(if (replaying) "Replay" else "Live", style = MaterialTheme.typography.labelMedium, color = Color.White)
         if (fps > 0) {
-            Text(String.format(Locale.US, "%.0f FPS", fps), style = OverlineStyle, color = Color.White.copy(alpha = 0.6f))
+            Text(String.format(Locale.US, "%.0f fps", fps), style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"), color = Color.White.copy(alpha = 0.6f))
         }
     }
 }
@@ -308,7 +319,7 @@ private fun HudCard(
     edge: Color = HudEdge,
     content: @Composable () -> Unit
 ) {
-    Surface(color = color, shape = RoundedCornerShape(18.dp), border = androidx.compose.foundation.BorderStroke(1.dp, edge), modifier = modifier) {
+    Surface(color = color, shape = RoundedCornerShape(12.dp), border = androidx.compose.foundation.BorderStroke(1.dp, edge), modifier = modifier) {
         content()
     }
 }
@@ -348,11 +359,11 @@ private fun ReplayPickerDialog(clips: List<File>, onDemo: () -> Unit, onClip: (F
 
 @Composable
 private fun ReplayBanner(name: String, onStop: () -> Unit) {
-    HudCard(color = Brand.Teal700.copy(alpha = 0.9f)) {
+    HudCard {
         Row(Modifier.padding(start = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(Icons.Rounded.Replay, contentDescription = null, tint = Brand.Mint, modifier = Modifier.size(18.dp))
+            Icon(Icons.Rounded.Replay, contentDescription = null, tint = HudAccent, modifier = Modifier.size(18.dp))
             Text("Replaying: $name", color = Color.White, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-            TextButton(onClick = onStop) { Text("Stop", color = Brand.Mint, style = MaterialTheme.typography.labelLarge) }
+            TextButton(onClick = onStop) { Text("Stop", color = HudAccent, style = MaterialTheme.typography.labelLarge) }
         }
     }
 }
@@ -401,7 +412,7 @@ fun PreflightPill(preflight: PreflightResult) {
     HudCard {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("PRE-FLIGHT CHECKS", style = OverlineStyle, color = Brand.Mint, modifier = Modifier.weight(1f))
+                Text("Pre-flight checks", style = MaterialTheme.typography.labelLarge, color = HudAccent, modifier = Modifier.weight(1f))
                 Text("$passed / ${preflight.checks.size}", style = MaterialTheme.typography.labelLarge, color = Color.White)
             }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -446,14 +457,14 @@ private fun CameraPermissionPrompt(modifier: Modifier, onRequest: () -> Unit) {
     Column(
         modifier
             .padding(28.dp)
-            .clip(RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(HudGlass)
-            .border(1.dp, HudEdge, RoundedCornerShape(28.dp))
+            .border(1.dp, HudEdge, RoundedCornerShape(16.dp))
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        IconBadge(Icons.Rounded.CameraAlt, Brand.Mint, size = 60.dp)
+        Icon(Icons.Rounded.CameraAlt, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
         Text("Camera access", style = MaterialTheme.typography.titleLarge, color = Color.White)
         Text(
             "The camera is used only to estimate your pose on this phone. Frames are never saved or sent anywhere.",
@@ -461,12 +472,7 @@ private fun CameraPermissionPrompt(modifier: Modifier, onRequest: () -> Unit) {
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center
         )
-        GradientButton(
-            "Allow camera", onRequest, Modifier.fillMaxWidth(),
-            icon = Icons.Rounded.CameraAlt,
-            brush = Brush.horizontalGradient(listOf(Brand.Mint, Brand.Cyan)),
-            contentColor = Brand.Navy900
-        )
+        PrimaryButton("Allow camera", onRequest, Modifier.fillMaxWidth(), container = Color.White, content = HudInk)
     }
 }
 
@@ -486,7 +492,7 @@ internal fun BottomPanel(
     val explain: @Composable () -> Unit = { ExplainChip(onExplain) }
     Surface(
         color = HudGlass,
-        shape = RoundedCornerShape(26.dp),
+        shape = RoundedCornerShape(16.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, HudEdge),
         modifier = modifier
     ) {
@@ -501,15 +507,15 @@ internal fun BottomPanel(
             val label = out?.lockedLabel
             when {
                 !state.modelReady && state.error == null -> StatusRow(
-                    { CircularProgressIndicator(Modifier.size(22.dp), color = Brand.Mint, strokeWidth = 2.5.dp) },
+                    { CircularProgressIndicator(Modifier.size(22.dp), color = HudAccent, strokeWidth = 2.5.dp) },
                     "Loading pose model…", "On-device AI warming up", explain
                 )
                 out == null -> StatusRow(
-                    { IconBadge(Icons.Rounded.CameraAlt, Brand.Mint, size = 40.dp) },
+                    { Icon(Icons.Rounded.CameraAlt, contentDescription = null, tint = Color.White, modifier = Modifier.size(26.dp)) },
                     "Set up your space", "Point the phone at your practice space, about 2–3 m away.", explain
                 )
                 !out.scoringArmed -> StatusRow(
-                    { PoseGlyph(Asana.TADASANA, Modifier.size(44.dp), glow = false) },
+                    { PoseGlyph(Asana.TADASANA, Modifier.size(44.dp), color = Color.White, jointColor = HudInk) },
                     "Stand in Tadasana", "Stand in Tadasana facing the phone. Scoring starts when every check is green.", explain
                 )
                 label == null -> {
@@ -517,15 +523,15 @@ internal fun BottomPanel(
                     if (cand != null && out.lock.candidateProgress > 0.3) {
                         StatusRow(
                             {
-                                RingGauge(out.lock.candidateProgress.toFloat(), Brand.Mint, Modifier.size(44.dp), stroke = 4.dp, trackColor = Color.White.copy(alpha = 0.12f)) {
-                                    PoseGlyph(cand.asana, Modifier.size(30.dp), glow = false)
+                                Ring(out.lock.candidateProgress.toFloat(), HudAccent, Modifier.size(44.dp), stroke = 4.dp, track = Color.White.copy(alpha = 0.14f)) {
+                                    PoseGlyph(cand.asana, Modifier.size(30.dp), color = Color.White, jointColor = HudInk)
                                 }
                             },
                             "Detecting ${cand.asana.sanskritName}…", "Hold steady while the pose locks in", explain
                         )
                     } else if (targetAsana != null) {
                         StatusRow(
-                            { PoseGlyph(targetAsana, Modifier.size(44.dp), glow = false) },
+                            { PoseGlyph(targetAsana, Modifier.size(44.dp), color = Color.White, jointColor = HudInk) },
                             "Target: ${targetAsana.englishName}", targetHint(targetAsana), explain
                         )
                     } else {
@@ -545,8 +551,8 @@ internal fun BottomPanel(
                     val cal = out.calibration
                     StatusRow(
                         {
-                            RingGauge(cal.progress.toFloat(), Brand.Mint, Modifier.size(44.dp), stroke = 4.dp, trackColor = Color.White.copy(alpha = 0.12f)) {
-                                PoseGlyph(Asana.TADASANA, Modifier.size(30.dp), glow = false)
+                            Ring(cal.progress.toFloat(), HudAccent, Modifier.size(44.dp), stroke = 4.dp, track = Color.White.copy(alpha = 0.14f)) {
+                                PoseGlyph(Asana.TADASANA, Modifier.size(30.dp), color = Color.White, jointColor = HudInk)
                             }
                         },
                         "Tadasana · neutral",
@@ -566,7 +572,7 @@ internal fun BottomPanel(
 /** Compact "Finish & Save" action that closes the session and shows its receipt. */
 @Composable
 private fun FinishChip(onClick: () -> Unit) {
-    Surface(onClick = onClick, shape = CircleShape, color = Brand.Mint, contentColor = Brand.Navy900, modifier = Modifier.height(36.dp)) {
+    Surface(onClick = onClick, shape = CircleShape, color = HudAccent, contentColor = HudInk, modifier = Modifier.height(36.dp)) {
         Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Icon(Icons.Rounded.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
             Text("Finish & Save", style = MaterialTheme.typography.labelLarge)
@@ -582,29 +588,29 @@ fun targetHint(target: Asana): String =
 
 @Composable
 private fun TargetChip(target: Asana) {
-    HudCard(color = Brand.Teal700.copy(alpha = 0.92f)) {
+    HudCard {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PoseGlyph(target, Modifier.size(22.dp), glow = false)
+            PoseGlyph(target, Modifier.size(22.dp), color = Color.White, jointColor = HudInk)
             Text("Target: ${target.englishName}", color = Color.White, style = MaterialTheme.typography.labelLarge)
         }
     }
 }
 
-/** Compact Σ button (with an "EXPLAIN" caption) that opens the live score breakdown. */
+/** Compact button that opens the live score breakdown. */
 @Composable
 private fun ExplainChip(onClick: () -> Unit) {
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(14.dp),
-        color = Color.White.copy(alpha = 0.10f),
+        shape = RoundedCornerShape(12.dp),
+        color = Color.White.copy(alpha = 0.08f),
         border = androidx.compose.foundation.BorderStroke(1.dp, HudEdge),
         modifier = Modifier
-            .size(width = 54.dp, height = 50.dp)
+            .size(width = 58.dp, height = 52.dp)
             .semantics { contentDescription = "Explain Score" }
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            Icon(Icons.Rounded.Functions, contentDescription = null, tint = Brand.Mint, modifier = Modifier.size(20.dp))
-            Text("EXPLAIN", style = OverlineStyle.copy(fontSize = 8.sp, letterSpacing = 0.06.em), color = Color.White.copy(alpha = 0.8f))
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)) {
+            Icon(Icons.Outlined.Info, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+            Text("Explain", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.75f))
         }
     }
 }
@@ -634,7 +640,7 @@ private fun PoseChooser() {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                PoseGlyph(a, Modifier.size(40.dp), glow = false)
+                PoseGlyph(a, Modifier.size(40.dp), color = Color.White, jointColor = HudInk)
                 Text(a.englishName.removeSuffix(" Pose"), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.8f), maxLines = 1)
             }
         }
@@ -651,7 +657,7 @@ private fun CoachCaption(u: CoachUtterance) {
     ) {
         Icon(
             Icons.AutoMirrored.Rounded.VolumeUp, contentDescription = "Voice coach",
-            tint = if (safety) ScoreColors.Red else Brand.Mint, modifier = Modifier.size(16.dp)
+            tint = if (safety) ScoreColors.Red else HudAccent, modifier = Modifier.size(16.dp)
         )
         Text(
             "Coach: " + u.text,
@@ -671,12 +677,14 @@ private fun ScoredPoseInfo(out: PipelineOutput, trailing: @Composable () -> Unit
     val score = out.score
     val color = scoreColor(score)
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        RingGauge(
-            ((score ?: 0.0) / 100.0).toFloat(), color, Modifier.size(60.dp), stroke = 6.dp,
-            trackColor = Color.White.copy(alpha = 0.12f),
-            brush = Brush.sweepGradient(listOf(color.copy(alpha = 0.6f), color))
+        Ring(
+            ((score ?: 0.0) / 100.0).toFloat(), color, Modifier.size(64.dp), stroke = 5.dp,
+            track = Color.White.copy(alpha = 0.14f)
         ) {
-            Text(score?.let { "${it.toInt()}%" } ?: "–", style = NumericStyle.copy(fontSize = 17.sp), color = Color.White)
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(score?.let { "${it.toInt()}" } ?: "–", style = NumericStyle.copy(fontSize = 17.sp), color = Color.White)
+                if (score != null) Text("%", style = NumericStyle.copy(fontSize = 10.sp), color = Color.White.copy(alpha = 0.7f), modifier = Modifier.padding(bottom = 2.dp))
+            }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(label.asana.sanskritName, style = MaterialTheme.typography.titleMedium, color = Color.White, maxLines = 2)
@@ -687,7 +695,7 @@ private fun ScoredPoseInfo(out: PipelineOutput, trailing: @Composable () -> Unit
                 maxLines = 1
             )
             if (label.asana.cameraAngle == CameraAngle.SIDE_OR_45) {
-                Text(label.asana.cameraAngle.instruction, style = MaterialTheme.typography.labelSmall, color = Brand.Mint)
+                Text(label.asana.cameraAngle.instruction, style = MaterialTheme.typography.labelSmall, color = HudAccent)
             }
         }
         trailing()
@@ -704,13 +712,13 @@ private fun ScoredPoseInfo(out: PipelineOutput, trailing: @Composable () -> Unit
     val h = out.hold
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         HudStat(
-            "HOLD",
+            "Hold",
             String.format(Locale.US, "%.1fs", h.graceHoldSec) + (label.asana.maxHoldSec?.let { "/$it" } ?: ""),
             Modifier.weight(1f)
         )
-        HudStat("STRICT", String.format(Locale.US, "%.1fs", h.strictHoldSec), Modifier.weight(1f))
-        HudStat("BEST", String.format(Locale.US, "%.1fs", h.bestGraceSec), Modifier.weight(1f))
-        out.sway?.let { HudStat("STABLE", "${it.stability.toInt()}", Modifier.weight(1f)) }
+        HudStat("Strict", String.format(Locale.US, "%.1fs", h.strictHoldSec), Modifier.weight(1f))
+        HudStat("Best", String.format(Locale.US, "%.1fs", h.bestGraceSec), Modifier.weight(1f))
+        out.sway?.let { HudStat("Stable", "${it.stability.toInt()}", Modifier.weight(1f)) }
         out.intraSymmetry?.let { HudStat("L/R", "${it.toInt()}%", Modifier.weight(1f)) }
     }
 }
@@ -757,7 +765,13 @@ private fun HudStat(label: String, value: String, modifier: Modifier) {
             .padding(horizontal = 4.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(label, style = OverlineStyle.copy(fontSize = 8.5.sp, letterSpacing = 0.06.em), color = Color.White.copy(alpha = 0.6f), maxLines = 1)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f), maxLines = 1)
         Text(value, style = NumericStyle.copy(fontSize = 14.sp), color = Color.White, maxLines = 1)
     }
+}
+
+private tailrec fun android.content.Context.findActivity(): android.app.Activity? = when (this) {
+    is android.app.Activity -> this
+    is android.content.ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

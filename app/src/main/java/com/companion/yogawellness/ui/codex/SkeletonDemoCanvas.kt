@@ -34,6 +34,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.companion.yogawellness.ui.theme.AppTheme
+import com.companion.yogawellness.ui.theme.Inter
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.companion.yogawellness.codex.AsanaCodexItem
 import com.companion.yogawellness.codex.CalloutJoint
@@ -52,17 +54,47 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/** Colours of the demo figure (§5.4). */
+/** Colours of one demo rendering (§5.4): the dark 3D viewer or a light list thumbnail. */
+class DemoPalette(
+    val background: Color,
+    val backgroundTop: Color,
+    /** At the peak / hold. */
+    val peakBone: Color,
+    /** Entering or leaving the pose. */
+    val movingBone: Color,
+    val joint: Color,
+    val floor: Color,
+    val plumb: Color,
+    val arc: Color,
+    val pillBg: Color,
+    val pillText: Color
+)
+
+/** The 3D viewer: a dark technical viewport, light bones, accent at the hold, amber angle arcs. */
 object DemoColors {
-    val Background = Color(0xFF071A2F)    // brand navy
-    val PeakBone = Color(0xFF5EEAD4)      // brand mint: at the peak / hold
-    val MovingBone = Color(0xFF38BDF8)    // cyan: entering or leaving the pose
-    val Joint = Color(0xFFE2E8F0)
-    val Floor = Color(0xFF2B4A6B)
-    val Plumb = Color(0x80E2E8F0)
-    val Arc = Color(0xFFFBBF24)
-    val PillBg = Color(0xE6071A2F)
-    val PillText = Color.White
+    val Background = Color(0xFF121519)
+    val Viewer = DemoPalette(
+        background = Background,
+        backgroundTop = Color(0xFF1B1F25),
+        peakBone = Color(0xFF5CC8C2),
+        movingBone = Color(0xFFB7BEC7),
+        joint = Color(0xFFFFFFFF),
+        floor = Color(0xFF3A414B),
+        plumb = Color(0x66FFFFFF),
+        arc = Color(0xFFF2B33D),
+        pillBg = Color(0xE6000000),
+        pillText = Color.White
+    )
+}
+
+/** List thumbnails follow the app theme: recessed tile, ink-coloured figure. */
+@Composable
+fun thumbnailPalette(): DemoPalette {
+    val c = AppTheme.colors
+    return DemoPalette(
+        background = c.sunken, backgroundTop = c.sunken, peakBone = c.text, movingBone = c.textSecondary,
+        joint = c.text, floor = c.borderStrong, plumb = c.borderStrong, arc = c.warning, pillBg = c.surface, pillText = c.text
+    )
 }
 
 /** Steepest view tilt of the interactive demo (looking down from above). */
@@ -287,7 +319,13 @@ class DemoStyle(
  * bones, joints, head and (when [labels] is given and the figure is at the peak) angle arcs with
  * value pills. Allocation-free.
  */
-fun DrawScope.drawDemoFrame(f: DemoFrame, style: DemoStyle?, labels: List<TextLayoutResult>?, showPlumb: Boolean) {
+fun DrawScope.drawDemoFrame(
+    f: DemoFrame,
+    style: DemoStyle?,
+    labels: List<TextLayoutResult>?,
+    showPlumb: Boolean,
+    palette: DemoPalette = DemoColors.Viewer
+) {
     val w = size.width
     val h = size.height
     val worldW = f.maxX - f.minX
@@ -298,22 +336,22 @@ fun DrawScope.drawDemoFrame(f: DemoFrame, style: DemoStyle?, labels: List<TextLa
     val scale = min(w * 0.86f / worldW, h * 0.80f / (top + floorDepth))
     val floorY = h * 0.90f - floorDepth * scale
     val cx = w / 2f - (f.minX + f.maxX) / 2f * scale
-    val bone = if (f.atPeak) DemoColors.PeakBone else DemoColors.MovingBone
+    val bone = if (f.atPeak) palette.peakBone else palette.movingBone
     val boneW = max(2f, scale * 0.075f)
 
     if (f.tiltSin > 0.02f && style != null) {
         // Tilted view: the floor is a disc around the turn axis.
         val rx = worldW / 2f * scale
         val ry = rx * f.tiltSin
-        drawOval(DemoColors.Floor.copy(alpha = 0.25f), Offset(cx - rx, floorY - ry), Size(2 * rx, 2 * ry))
-        drawOval(DemoColors.Floor, Offset(cx - rx, floorY - ry), Size(2 * rx, 2 * ry), style = style.floorStroke)
+        drawOval(palette.floor.copy(alpha = 0.25f), Offset(cx - rx, floorY - ry), Size(2 * rx, 2 * ry))
+        drawOval(palette.floor, Offset(cx - rx, floorY - ry), Size(2 * rx, 2 * ry), style = style.floorStroke)
     } else {
-        drawLine(DemoColors.Floor, Offset(w * 0.04f, floorY), Offset(w * 0.96f, floorY), strokeWidth = max(1.5f, scale * 0.02f))
+        drawLine(palette.floor, Offset(w * 0.04f, floorY), Offset(w * 0.96f, floorY), strokeWidth = max(1.5f, scale * 0.02f))
     }
     if (showPlumb && style != null) {
         val px = cx + f.x[PELVIS] * scale
         drawLine(
-            DemoColors.Plumb, Offset(px, floorY - f.y[PELVIS] * scale), Offset(px, floorY - f.pelvisFloorY * scale),
+            palette.plumb, Offset(px, floorY - f.y[PELVIS] * scale), Offset(px, floorY - f.pelvisFloorY * scale),
             strokeWidth = max(1f, scale * 0.015f), pathEffect = style.plumbEffect
         )
     }
@@ -330,7 +368,7 @@ fun DrawScope.drawDemoFrame(f: DemoFrame, style: DemoStyle?, labels: List<TextLa
     val jointR = boneW * 0.62f
     for (j in 0 until JOINTS) {
         if (j == HEAD) continue
-        drawCircle(DemoColors.Joint, jointR, Offset(cx + f.x[j] * scale, floorY - f.y[j] * scale))
+        drawCircle(palette.joint, jointR, Offset(cx + f.x[j] * scale, floorY - f.y[j] * scale))
     }
     // Head: a ring drawn as two discs (no Stroke object needed). The rig's ground contact is
     // joint-based, so a head resting on the floor (puppy, child's pose, lying poses) would be half
@@ -338,7 +376,7 @@ fun DrawScope.drawDemoFrame(f: DemoFrame, style: DemoStyle?, labels: List<TextLa
     val head = Offset(cx + f.headX * scale, floorY - f.headY * scale)
     val headR = (DemoFrame.HEAD_RADIUS * scale).toFloat()
     drawCircle(bone, headR, head)
-    drawCircle(DemoColors.Background, headR - boneW * 0.7f, head)
+    drawCircle(palette.background, headR - boneW * 0.7f, head)
 
     if (labels == null || style == null || !f.atPeak) return
     for (i in labels.indices) {
@@ -348,7 +386,7 @@ fun DrawScope.drawDemoFrame(f: DemoFrame, style: DemoStyle?, labels: List<TextLa
         val r = style.arcRadiusPx
         if (f.hasArc[i]) {
             drawArc(
-                DemoColors.Arc, f.arcStart[i], f.arcSweep[i], useCenter = false,
+                palette.arc, f.arcStart[i], f.arcSweep[i], useCenter = false,
                 topLeft = Offset(vx - r, vy - r), size = Size(2 * r, 2 * r), style = style.arcStroke
             )
         }
@@ -366,7 +404,7 @@ fun DrawScope.drawDemoFrame(f: DemoFrame, style: DemoStyle?, labels: List<TextLa
         px = px.coerceIn(0f, w - pw)
         f.pillLeft[i] = px; f.pillTop[i] = py; f.pillW[i] = pw; f.pillH[i] = ph
         drawRoundRect(
-            DemoColors.PillBg, Offset(px, py), Size(pw, ph),
+            palette.pillBg, Offset(px, py), Size(pw, ph),
             cornerRadius = androidx.compose.ui.geometry.CornerRadius(ph / 2, ph / 2)
         )
         drawText(t, topLeft = Offset(px + style.pillPadPx, py + style.pillPadPx / 2))
@@ -450,7 +488,7 @@ fun SkeletonDemoCanvas(
 
     val measurer = rememberTextMeasurer()
     val labels = remember(item, density) {
-        val ts = TextStyle(color = DemoColors.PillText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        val ts = TextStyle(color = DemoColors.Viewer.pillText, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, fontFamily = Inter)
         calloutValueLabels(item).map { measurer.measure(it, ts) }
     }
     val style = remember(density) {
@@ -469,8 +507,8 @@ fun SkeletonDemoCanvas(
     Canvas(
         modifier
             .aspectRatio(4f / 5f)
-            .clip(RoundedCornerShape(22.dp))
-            .background(Brush.verticalGradient(listOf(Color(0xFF0B2A4A), DemoColors.Background)))
+            .clip(RoundedCornerShape(10.dp))
+            .background(Brush.verticalGradient(listOf(DemoColors.Viewer.backgroundTop, DemoColors.Viewer.background)))
             .semantics { contentDescription = description }
     ) {
         if (version < 0) return@Canvas // draw-phase read: redraw on every solved frame
@@ -478,14 +516,15 @@ fun SkeletonDemoCanvas(
     }
 }
 
-/** Static peak-pose figure for list rows and the contact sheet. */
+/** Static peak-pose figure for list rows and the contact sheet (light, theme-following tile). */
 @Composable
 fun SkeletonThumbnail(item: AsanaCodexItem, view: CodexView, modifier: Modifier = Modifier) {
     val frame = remember(item, view) { DemoFrame(item).also { it.update(item.peak, view.yawDeg, atPeak = true) } }
+    val palette = thumbnailPalette()
     Canvas(
         modifier
             .aspectRatio(4f / 5f)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Brush.verticalGradient(listOf(Color(0xFF0B2A4A), DemoColors.Background)))
-    ) { drawDemoFrame(frame, null, null, showPlumb = false) }
+            .clip(RoundedCornerShape(8.dp))
+            .background(palette.background)
+    ) { drawDemoFrame(frame, null, null, showPlumb = false, palette = palette) }
 }

@@ -1,141 +1,39 @@
 package com.companion.yogawellness.ui.components
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.companion.yogawellness.R
 import com.companion.yogawellness.scoring.Asana
-import com.companion.yogawellness.ui.theme.Brand
+import com.companion.yogawellness.ui.theme.AppTheme
 
-/** Soft glows, concentric rings and a dotted grid layered on the hero gradient. */
+/** The launcher artwork on its own tile — the in-app brand mark (onboarding, About). */
 @Composable
-fun HeroDecor(modifier: Modifier = Modifier, intensity: Float = 1f) {
-    Canvas(modifier) {
-        val w = size.width
-        val h = size.height
-        val glowR = w * 0.75f
-        drawCircle(
-            Brush.radialGradient(listOf(Brand.Teal400.copy(alpha = 0.30f * intensity), Color.Transparent), Offset(w * 0.95f, 0f), glowR),
-            radius = glowR, center = Offset(w * 0.95f, 0f)
-        )
-        val glow2 = w * 0.55f
-        drawCircle(
-            Brush.radialGradient(listOf(Brand.Cyan.copy(alpha = 0.12f * intensity), Color.Transparent), Offset(0f, h), glow2),
-            radius = glow2, center = Offset(0f, h)
-        )
-        val ringCenter = Offset(w * 0.92f, h * 0.08f)
-        for (i in 1..4) {
-            drawCircle(
-                Color.White.copy(alpha = 0.07f * intensity / i),
-                radius = 52.dp.toPx() * i, center = ringCenter, style = Stroke(1.dp.toPx())
-            )
-        }
-        // Dot grid, top-left — a quiet "instrument panel" texture
-        val step = 14.dp.toPx()
-        val dot = 1.1.dp.toPx()
-        for (r in 0 until 5) for (c in 0 until 7) {
-            drawCircle(Color.White.copy(alpha = 0.09f * intensity), dot, Offset(18.dp.toPx() + c * step, h * 0.55f + r * step))
-        }
-    }
-}
-
-/**
- * Electrocardiogram-style pulse line. A bright highlight travels along the trace when [animate]
- * is on (infinite animations are suspended in UI tests, leaving the static trace).
- */
-@Composable
-fun PulseLine(modifier: Modifier = Modifier, color: Color = Brand.Mint, animate: Boolean = true, periodDp: Dp = 150.dp) {
-    val transition = rememberInfiniteTransition(label = "pulse")
-    // Read only inside the draw lambda, so the trace redraws each frame without recomposing.
-    val phase = transition.animateFloat(
-        0.35f, 1.35f, infiniteRepeatable(tween(2600, easing = LinearEasing), RepeatMode.Restart), label = "phase"
-    )
-    Canvas(modifier) {
-        val path = ecgPath(size.width, size.height, periodDp.toPx())
-        drawPath(path, color.copy(alpha = 0.22f), style = Stroke(1.6.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
-        val x = size.width * (if (animate) phase.value % 1f else 0.35f)
-        val band = size.width * 0.22f
-        drawPath(
-            path,
-            Brush.horizontalGradient(
-                0f to Color.Transparent,
-                ((x - band) / size.width).coerceIn(0f, 1f) to Color.Transparent,
-                (x / size.width).coerceIn(0f, 1f) to color,
-                ((x + 2) / size.width).coerceIn(0f, 1f) to Color.Transparent,
-                1f to Color.Transparent
-            ),
-            style = Stroke(2.4.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
-        )
-    }
-}
-
-private fun ecgPath(w: Float, h: Float, period: Float): Path {
-    val mid = h * 0.62f
-    val amp = h * 0.9f
-    val p = Path()
-    p.moveTo(0f, mid)
-    var x0 = 0f
-    while (x0 < w) {
-        fun at(f: Float) = x0 + period * f
-        p.lineTo(at(0.30f), mid)
-        p.quadraticTo(at(0.35f), mid - amp * 0.12f, at(0.40f), mid)          // P wave
-        p.lineTo(at(0.46f), mid)
-        p.lineTo(at(0.49f), mid + amp * 0.08f)                                 // Q
-        p.lineTo(at(0.525f), mid - amp * 0.62f)                                // R
-        p.lineTo(at(0.56f), mid + amp * 0.22f)                                 // S
-        p.lineTo(at(0.59f), mid)
-        p.lineTo(at(0.68f), mid)
-        p.quadraticTo(at(0.75f), mid - amp * 0.20f, at(0.82f), mid)           // T wave
-        p.lineTo(at(1f), mid)
-        x0 += period
-    }
-    return p
-}
-
-/** The launcher artwork on its navy disc — used as the in-app brand mark. */
-@Composable
-fun BrandMark(modifier: Modifier = Modifier, size: Dp = 44.dp, ring: Boolean = true) {
+fun BrandMark(modifier: Modifier = Modifier, size: Dp = 44.dp) {
     Box(
         modifier
             .size(size)
-            .clip(CircleShape)
-            .background(Brush.linearGradient(listOf(Color(0xFF0D2E35), Color(0xFF0A3B44), Color(0xFF061E23))))
-            .then(if (ring) Modifier.border(1.dp, Brand.Mint.copy(alpha = 0.45f), CircleShape) else Modifier),
+            .clip(RoundedCornerShape(size * 0.24f))
+            .background(Color(0xFF0A3B44)),
         contentAlignment = Alignment.Center
     ) {
-        // The foreground art occupies the middle ~45% of its 108-unit canvas; scale it up to fill the disc.
-        Image(
-            painterResource(R.drawable.ic_launcher_foreground),
-            contentDescription = null,
-            modifier = Modifier.requiredSize(size * 1.75f)
-        )
+        // The foreground art occupies the middle of its 108-unit canvas; scale it to fill the tile.
+        Image(painterResource(R.drawable.ic_launcher_foreground), contentDescription = null, modifier = Modifier.requiredSize(size * 1.75f))
     }
 }
 
@@ -199,14 +97,14 @@ private fun figureFor(asana: Asana): Figure = when (asana) {
     }
 }
 
-/** Draws [asana] as a glowing keypoint figure. */
+/** Draws [asana] as a clean line figure with small joint markers (technical-drawing style). */
 @Composable
 fun PoseGlyph(
     asana: Asana,
     modifier: Modifier = Modifier,
-    color: Color = Brand.Mint,
-    jointColor: Color = Color.White,
-    glow: Boolean = true
+    color: Color = AppTheme.colors.text,
+    jointColor: Color = AppTheme.colors.surface,
+    glow: Boolean = false
 ) {
     val fig = figureFor(asana)
     Canvas(modifier) {
@@ -226,15 +124,14 @@ private fun DrawScope.drawFigure(
     jointColor: Color,
     glow: Boolean
 ) {
-    val bone = 3.6f * s
+    val bone = 2.6f * s
     if (glow) {
-        for ((a, b) in fig.bones) drawLine(color.copy(alpha = 0.22f), m(a), m(b), strokeWidth = bone * 3f, cap = StrokeCap.Round)
-        drawCircle(color.copy(alpha = 0.18f), fig.headR * s * 1.5f, m(fig.head))
+        for ((a, b) in fig.bones) drawLine(color.copy(alpha = 0.18f), m(a), m(b), strokeWidth = bone * 3f, cap = StrokeCap.Round)
     }
     for ((a, b) in fig.bones) drawLine(color, m(a), m(b), strokeWidth = bone, cap = StrokeCap.Round)
-    drawCircle(color, fig.headR * s, m(fig.head))
+    drawCircle(color, fig.headR * s, m(fig.head), style = androidx.compose.ui.graphics.drawscope.Stroke(bone))
     for (j in fig.joints) {
-        drawCircle(jointColor, 2.7f * s, m(j))
-        drawCircle(color, 1.5f * s, m(j))
+        drawCircle(color, 2.4f * s, m(j))
+        drawCircle(jointColor, 1.1f * s, m(j))
     }
 }

@@ -25,14 +25,14 @@ data class ChartColors(
 ) {
     companion object {
         val Light = ChartColors(
-            surface = 0xFFFFFFFF.toInt(), inkPrimary = 0xFF0F1B2D.toInt(), inkSecondary = 0xFF4A5A6E.toInt(),
-            muted = 0xFF7D8BA0.toInt(), grid = 0xFFE6ECF2.toInt(), axis = 0xFFC5D0DC.toInt(),
-            quality = 0xFF2A78D6.toInt(), stress = 0xFFEB6834.toInt(), mood = 0xFF1BAF7A.toInt()
+            surface = 0xFFFFFFFF.toInt(), inkPrimary = 0xFF111418.toInt(), inkSecondary = 0xFF4A5260.toInt(),
+            muted = 0xFF6B7380.toInt(), grid = 0xFFEDEFF2.toInt(), axis = 0xFFC9CED6.toInt(),
+            quality = 0xFF2A6FD6.toInt(), stress = 0xFFE0612D.toInt(), mood = 0xFF14946B.toInt()
         )
         val Dark = ChartColors(
-            surface = 0xFF0C1828.toInt(), inkPrimary = 0xFFE6EDF5.toInt(), inkSecondary = 0xFFA9B7C9.toInt(),
-            muted = 0xFF7D8CA3.toInt(), grid = 0xFF1A2A40.toInt(), axis = 0xFF2B3D57.toInt(),
-            quality = 0xFF3987E5.toInt(), stress = 0xFFD95926.toInt(), mood = 0xFF199E70.toInt()
+            surface = 0xFF171A1F.toInt(), inkPrimary = 0xFFF1F3F5.toInt(), inkSecondary = 0xFFB4BAC4.toInt(),
+            muted = 0xFF8B929D.toInt(), grid = 0xFF23282F.toInt(), axis = 0xFF3B424C.toInt(),
+            quality = 0xFF5B95EC.toInt(), stress = 0xFFF07A45.toInt(), mood = 0xFF34C08E.toInt()
         )
     }
 }
@@ -47,7 +47,13 @@ data class ChartColors(
  * Drawn on a plain [Canvas] so the app (Compose nativeCanvas) and the PDF report share one renderer.
  * @param dp pixels per dp, @param sp pixels per sp (use ~0.8 for PDF points)
  */
-class TrendChartRenderer(private val c: ChartColors, private val dp: Float, private val sp: Float) {
+class TrendChartRenderer(
+    private val c: ChartColors,
+    private val dp: Float,
+    private val sp: Float,
+    /** Optional app typeface for labels (the PDF keeps the platform default). */
+    private val typeface: android.graphics.Typeface? = null
+) {
 
     private val leftPad = 30 * dp
     private val rightPad = 40 * dp
@@ -67,6 +73,11 @@ class TrendChartRenderer(private val c: ChartColors, private val dp: Float, priv
     }
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val selPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = c.inkSecondary; strokeWidth = max(1f, dp); alpha = 140 }
+
+    init {
+        if (typeface != null) listOf(tickText, xText, titleText, endText).forEach { it.typeface = typeface }
+        if (typeface != null) endText.isFakeBoldText = false
+    }
 
     private class Series(val name: String, val color: Int, val values: List<Double?>)
 
