@@ -5,19 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.Science
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,9 +15,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -36,56 +22,38 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.companion.yogawellness.YogaWellnessApp
 import com.companion.yogawellness.data.ProfileIds
+import com.companion.yogawellness.ui.components.Chip
 import com.companion.yogawellness.ui.theme.AppTheme
+import com.companion.yogawellness.ui.theme.Space
 import com.companion.yogawellness.wellness.Persona
 import kotlinx.coroutines.launch
 
-/** Stateless row of profile chips. [busyId] shows a spinner while that demo is being seeded. */
+/**
+ * Stateless row of profile chips, scrolling edge to edge with the page gutter as padding.
+ * [busyId] shows a spinner while that demo is being seeded.
+ */
 @Composable
 fun ProfileSelector(activeId: String, busyId: String?, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
+    val c = AppTheme.colors
     Row(
-        modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = Space.Gutter, vertical = Space.XS),
+        horizontalArrangement = Arrangement.spacedBy(Space.S),
         verticalAlignment = Alignment.CenterVertically
     ) {
         (listOf(ProfileIds.MY_ACCOUNT) + ProfileIds.DEMO_IDS).forEach { id ->
             val selected = id == activeId
-            val accent = if (ProfileIds.isDemo(id)) AppTheme.colors.warning else MaterialTheme.colorScheme.primary
-            Row(
-                Modifier
-                    .clip(CircleShape)
-                    .background(if (selected) accent else MaterialTheme.colorScheme.surface)
-                    .border(1.dp, if (selected) accent else AppTheme.colors.cardBorder, CircleShape)
-                    .selectable(selected = selected, enabled = busyId == null, role = Role.Tab, onClick = { onSelect(id) })
-                    .semantics { contentDescription = "Show ${ProfileIds.displayName(id)}" }
-                    .padding(start = 6.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Box(
-                    Modifier
-                        .size(26.dp)
-                        .clip(CircleShape)
-                        .background(if (selected) Color.White.copy(alpha = 0.25f) else accent.copy(alpha = 0.13f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (busyId == id) {
-                        CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp, color = if (selected) Color.White else accent)
-                    } else {
-                        Icon(
-                            if (ProfileIds.isDemo(id)) Icons.Rounded.Science else Icons.Rounded.Person,
-                            contentDescription = null,
-                            tint = if (selected) Color.White else accent,
-                            modifier = Modifier.size(15.dp)
-                        )
-                    }
-                }
-                Text(
-                    chipText(id),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (selected) Color.White else MaterialTheme.colorScheme.onSurface
-                )
-            }
+            Chip(
+                chipText(id),
+                selected = selected,
+                enabled = busyId == null,
+                onClick = { onSelect(id) },
+                modifier = Modifier.semantics { contentDescription = "Show ${ProfileIds.displayName(id)}" },
+                leading = if (busyId == id) ({
+                    CircularProgressIndicator(Modifier.size(12.dp), strokeWidth = 1.5.dp, color = if (selected) c.onInverse else c.textSecondary)
+                }) else null
+            )
         }
     }
 }

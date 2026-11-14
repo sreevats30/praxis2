@@ -336,7 +336,8 @@ class ScreenRenderTest {
                 com.companion.yogawellness.ui.history.HistoryUiState(loading = false), onStartPractice = {}, onDelete = {}
             )
         }
-        compose.onNodeWithText("No sessions yet. Start a practice — every pose you hold for 2 seconds is saved here.").assertExists()
+        compose.onNodeWithText("No sessions yet").assertExists()
+        compose.onNodeWithText("Start a practice — every pose you hold for 2 seconds is saved here.").assertExists()
         compose.onNodeWithText("Start practice").assertExists()
         save("history_empty")
     }
@@ -344,11 +345,10 @@ class ScreenRenderTest {
     @Test
     fun historyPopulatedAndExpanded() {
         setScreen { com.companion.yogawellness.ui.history.SessionHistoryContent(historyState(), onStartPractice = {}, onDelete = {}) }
-        compose.onNodeWithText("72% align").assertExists()
+        compose.onNodeWithText("72%").assertExists()
         compose.onNodeWithText("Manual").assertExists()
-        compose.onAllNodesWithText("Collapsed", substring = true, useUnmergedTree = true)
-        compose.onAllNodesWithContentDescription("Delete session from", substring = true)[0].assertExists()
         compose.onAllNodesWithText("3m 20s")[0].performClick() // expand the live session
+        compose.onAllNodesWithContentDescription("Delete session from", substring = true)[0].assertExists()
         compose.onNodeWithText("Virabhadrasana II · Left leg forward").assertExists()
         compose.onNodeWithText("Held 12.4 s (≥75%: 9.1 s)").assertExists()
         compose.onNodeWithText("Worst joint: Pelvic Level — \"Level your hips horizontally\"").assertExists()
@@ -410,7 +410,7 @@ class ScreenRenderTest {
     @Test
     fun homeScreen() {
         setScreen { HomeScreen(onStartPractice = {}) }
-        compose.onNodeWithText("Yoga Wellness Companion").assertExists()
+        compose.onNodeWithText(com.companion.yogawellness.ui.home.greeting()).assertExists()
         compose.onNodeWithText("Start practice").assertExists()
         save("home")
     }
@@ -439,17 +439,18 @@ class ScreenRenderTest {
     @Config(qualifiers = "w360dp-h2600dp-xxhdpi")
     fun homeScreenWithHistoryFullLength() {
         renderHome(personaHome())
-        compose.onNodeWithText("Your vitals today").assertExists()
-        compose.onNodeWithText("Pose library").assertExists()
+        compose.onNodeWithText("Edit").assertExists()
+        compose.onNodeWithText("Live posture coaching").assertExists()
+        compose.onNodeWithText("Warrior II").assertExists() // live-scored pose tiles
         save("home_full_persona_a")
     }
 
-    /** Same screen in dark theme. */
+    /** Same screen on a narrow (320dp) phone: nothing may clip or wrap badly. */
     @Test
-    @Config(qualifiers = "w360dp-h2600dp-night-xxhdpi")
-    fun homeScreenDarkFullLength() {
+    @Config(qualifiers = "w320dp-h2600dp-xxhdpi")
+    fun homeScreenNarrowFullLength() {
         renderHome(personaHome())
-        save("home_full_dark")
+        save("home_full_narrow")
     }
 
     /** First run: nothing logged yet. */

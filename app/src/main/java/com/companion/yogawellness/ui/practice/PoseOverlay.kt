@@ -26,7 +26,7 @@ import com.companion.yogawellness.scoring.AlignmentScorer
 import com.companion.yogawellness.scoring.AsanaSpecs
 import com.companion.yogawellness.scoring.JointEvaluation
 import com.companion.yogawellness.scoring.JointGeometry
-import com.companion.yogawellness.ui.theme.Jakarta
+import com.companion.yogawellness.ui.theme.Inter
 import com.companion.yogawellness.ui.theme.ScoreColors
 import kotlin.math.abs
 import kotlin.math.atan2
@@ -90,14 +90,13 @@ fun PoseOverlay(output: PipelineOutput?, mirror: Boolean, modifier: Modifier = M
             }
         }
 
-        // Bones: a soft cyan glow under a crisp core line
-        val glowW = 9.dp.toPx()
-        val coreW = 3.dp.toPx()
+        // Bones: thin white lines with a faint dark outline so they read on any background
+        val coreW = 2.5.dp.toPx()
         for ((a, b) in PoseLandmarkIndex.SKELETON_EDGES) {
             val la = frame[a]
             val lb = frame[b]
             if (la.visibility < 0.4f || lb.visibility < 0.4f) continue
-            drawLine(BoneGlow, tf.map(la), tf.map(lb), strokeWidth = glowW, cap = StrokeCap.Round)
+            drawLine(BoneShadow, tf.map(la), tf.map(lb), strokeWidth = coreW + 2.dp.toPx(), cap = StrokeCap.Round)
         }
         for ((a, b) in PoseLandmarkIndex.SKELETON_EDGES) {
             val la = frame[a]
@@ -111,9 +110,8 @@ fun PoseOverlay(output: PipelineOutput?, mirror: Boolean, modifier: Modifier = M
             if (lm.visibility < 0.4f) continue
             val p = tf.map(lm)
             val c = jointColor[i]?.let { scoreColor(it) } ?: ScoreColors.Neutral
-            if (jointColor[i] != null) drawCircle(c.copy(alpha = 0.30f), radius = 11.dp.toPx(), center = p)
-            drawCircle(Color.White, radius = 6.dp.toPx(), center = p)
-            drawCircle(c, radius = 4.5.dp.toPx(), center = p)
+            drawCircle(BoneCore, radius = 5.5.dp.toPx(), center = p)
+            drawCircle(c, radius = 4.dp.toPx(), center = p)
         }
 
         if (frontSide == null) return@Canvas
@@ -144,23 +142,22 @@ private fun vertexIndices(g: JointGeometry, frontSide: com.companion.yogawellnes
     is JointGeometry.SegmentVsHorizontal -> g.left.indices(frontSide) + g.right.indices(frontSide)
 }
 
-private val BoneGlow = Color(0x4022D3EE)
-private val BoneCore = Color(0xE6E0FBFF)
+private val BoneShadow = Color(0x59000000)
+private val BoneCore = Color(0xF2EEECE7)
 
 private fun DrawScope.drawAngleTag(tm: TextMeasurer, at: Offset, text: String, color: Color) {
     val layout = tm.measure(
         text,
-        TextStyle(color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = Jakarta)
+        TextStyle(color = Color(0xFFEEECE7), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, fontFamily = Inter, fontFeatureSettings = "tnum")
     )
-    val padX = 7.dp.toPx()
+    val padX = 8.dp.toPx()
     val padY = 3.dp.toPx()
     val topLeft = Offset(at.x + 10.dp.toPx(), at.y - layout.size.height - 10.dp.toPx())
     val size = androidx.compose.ui.geometry.Size(layout.size.width + 2 * padX, layout.size.height + 2 * padY)
-    val radius = androidx.compose.ui.geometry.CornerRadius(size.height / 2, size.height / 2)
     // Leader line from the joint to the tag
-    drawLine(color.copy(alpha = 0.8f), at, topLeft + Offset(0f, size.height), strokeWidth = 1.5.dp.toPx(), cap = StrokeCap.Round)
-    drawRoundRect(color = Color(0xCC07111F), topLeft = topLeft, size = size, cornerRadius = radius)
-    drawRoundRect(color = color, topLeft = topLeft, size = size, cornerRadius = radius, style = Stroke(1.5.dp.toPx()))
+    drawLine(Color.White.copy(alpha = 0.7f), at, topLeft + Offset(0f, size.height), strokeWidth = 1.dp.toPx(), cap = StrokeCap.Round)
+    drawRoundRect(color = Color(0xD90E0E0D), topLeft = topLeft, size = size, cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx(), 4.dp.toPx()))
+    drawRect(color = color, topLeft = topLeft, size = androidx.compose.ui.geometry.Size(3.dp.toPx(), size.height))
     drawText(layout, topLeft = topLeft + Offset(padX, padY))
 }
 
@@ -217,8 +214,8 @@ private fun DrawScope.drawCorrectionArrow(tf: OverlayTransform, anchors: JointAn
     val path = Path().apply {
         arcTo(Rect(v, radius), startDeg.toFloat(), sweepDeg.toFloat(), forceMoveTo = true)
     }
-    drawPath(path, color.copy(alpha = 0.3f), style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round))
-    drawPath(path, color, style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round))
+    drawPath(path, Color(0x59000000), style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round))
+    drawPath(path, color, style = Stroke(width = 3.5.dp.toPx(), cap = StrokeCap.Round))
 
     // Arrowhead at the end of the arc, pointing along the direction of travel
     val endRad = Math.toRadians(startDeg + sweepDeg)

@@ -12,8 +12,11 @@ import com.companion.yogawellness.ui.theme.YogaWellnessTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Every screen opens on the navy/teal brand header, so status-bar icons are always light.
-        enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT))
+        // The app is dark throughout (camera screen included): light system-bar icons everywhere.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
+        )
         setContent {
             YogaWellnessTheme {
                 AppNavHost()

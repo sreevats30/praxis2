@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#FF0F5257</color>
-    <!-- Brand navy shown behind the first frame, matching the home hero. -->
-    <color name="brand_navy">#FF071A2F</color>
+    <!-- Shown behind the first frame; matches the app's page colour (the app is dark-only). -->
+    <color name="window_background">#FF0E0E0D</color>
 </resources>

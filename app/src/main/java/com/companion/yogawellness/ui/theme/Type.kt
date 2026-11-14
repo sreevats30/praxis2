@@ -4,20 +4,19 @@ import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.companion.yogawellness.R
 
-/** Display face: Plus Jakarta Sans (OFL, bundled — the app has no internet permission). */
-val Jakarta = FontFamily(
-    Font(R.font.jakarta_medium, FontWeight.Medium),
-    Font(R.font.jakarta_semibold, FontWeight.SemiBold),
-    Font(R.font.jakarta_bold, FontWeight.Bold),
-    Font(R.font.jakarta_extrabold, FontWeight.ExtraBold)
-)
-
-/** Text face: Inter (OFL, bundled). */
+/*
+ * Two voices, each with one job (both SIL OFL, bundled — the app has no internet permission):
+ *  - Newsreader, a text serif, for the things you read as language: screen titles, the greeting,
+ *    pose names, and the sentence-length findings on Insights. Sanskrit names use its italic.
+ *  - Inter for everything you operate or measure: labels, controls, lists and numbers (always with
+ *    tabular figures, so values that change never jitter).
+ */
 val Inter = FontFamily(
     Font(R.font.inter_regular, FontWeight.Normal),
     Font(R.font.inter_medium, FontWeight.Medium),
@@ -25,38 +24,47 @@ val Inter = FontFamily(
     Font(R.font.inter_bold, FontWeight.Bold)
 )
 
-private fun display(size: Int, line: Int, weight: FontWeight, tracking: Double = -0.01) = TextStyle(
-    fontFamily = Jakarta, fontWeight = weight, fontSize = size.sp, lineHeight = line.sp, letterSpacing = tracking.em
+val Newsreader = FontFamily(
+    Font(R.font.newsreader_regular, FontWeight.Normal),
+    Font(R.font.newsreader_medium, FontWeight.Medium),
+    Font(R.font.newsreader_italic, FontWeight.Normal, FontStyle.Italic)
 )
 
-private fun text(size: Double, line: Int, weight: FontWeight = FontWeight.Normal, tracking: Double = 0.0) = TextStyle(
+private fun sans(size: Double, line: Int, weight: FontWeight, tracking: Double = 0.0) = TextStyle(
     fontFamily = Inter, fontWeight = weight, fontSize = size.sp, lineHeight = line.sp, letterSpacing = tracking.em
 )
 
+private fun serif(size: Double, line: Int, weight: FontWeight = FontWeight.Normal, tracking: Double = -0.01) = TextStyle(
+    fontFamily = Newsreader, fontWeight = weight, fontSize = size.sp, lineHeight = line.sp, letterSpacing = tracking.em
+)
+
 val AppTypography = Typography(
-    displayLarge = display(52, 58, FontWeight.ExtraBold, -0.03),
-    displayMedium = display(42, 48, FontWeight.ExtraBold, -0.025),
-    displaySmall = display(34, 40, FontWeight.ExtraBold, -0.02),
-    headlineLarge = display(30, 36, FontWeight.Bold, -0.02),
-    headlineMedium = display(26, 32, FontWeight.Bold, -0.015),
-    headlineSmall = display(22, 28, FontWeight.Bold),
-    titleLarge = display(19, 25, FontWeight.Bold),
-    titleMedium = display(16, 22, FontWeight.SemiBold, 0.0),
-    titleSmall = display(14, 20, FontWeight.SemiBold, 0.0),
-    bodyLarge = text(16.0, 24),
-    bodyMedium = text(14.0, 21),
-    bodySmall = text(12.5, 18),
-    labelLarge = text(14.0, 20, FontWeight.SemiBold, 0.005),
-    labelMedium = text(12.0, 16, FontWeight.Medium, 0.01),
-    labelSmall = text(11.0, 14, FontWeight.SemiBold, 0.02)
+    // Serif — titles and statements
+    displayLarge = serif(40.0, 46, tracking = -0.02),
+    displayMedium = serif(34.0, 40, tracking = -0.02),
+    displaySmall = serif(30.0, 36, tracking = -0.015),
+    headlineLarge = serif(27.0, 33),
+    headlineMedium = serif(24.0, 30),
+    headlineSmall = serif(20.0, 26),
+    // Sans — interface
+    titleLarge = sans(18.0, 24, FontWeight.SemiBold, -0.006),
+    titleMedium = sans(16.0, 22, FontWeight.SemiBold, -0.004),
+    titleSmall = sans(14.0, 20, FontWeight.SemiBold),
+    bodyLarge = sans(16.0, 24, FontWeight.Normal),
+    bodyMedium = sans(14.0, 20, FontWeight.Normal),
+    bodySmall = sans(13.0, 18, FontWeight.Normal),
+    labelLarge = sans(14.0, 20, FontWeight.SemiBold),
+    labelMedium = sans(12.0, 16, FontWeight.Medium),
+    labelSmall = sans(11.0, 14, FontWeight.Medium, 0.01)
 )
 
-/** Small-caps style section label ("TODAY'S CHECK-IN"). */
-val OverlineStyle = TextStyle(
-    fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 11.sp, lineHeight = 14.sp, letterSpacing = 0.12.em
-)
+/** Section headings ("Check-in", "This week"): small, semibold, secondary ink, sentence case. */
+val SectionStyle = sans(13.0, 18, FontWeight.SemiBold, 0.005)
 
-/** Tabular numerals for live values that change every frame (no jitter). */
+/** Sanskrit names and other transliterated terms. */
+val SanskritStyle = TextStyle(fontFamily = Newsreader, fontStyle = FontStyle.Italic, fontSize = 15.sp, lineHeight = 20.sp)
+
+/** Tabular figures for values that change (scores, timers, stats) so digits don't jitter. */
 val NumericStyle = TextStyle(
-    fontFamily = Jakarta, fontWeight = FontWeight.ExtraBold, fontFeatureSettings = "tnum", letterSpacing = (-0.02).em
+    fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontFeatureSettings = "tnum", letterSpacing = (-0.01).em
 )

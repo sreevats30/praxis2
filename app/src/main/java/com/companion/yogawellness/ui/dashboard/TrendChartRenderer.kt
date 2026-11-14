@@ -25,14 +25,15 @@ data class ChartColors(
 ) {
     companion object {
         val Light = ChartColors(
-            surface = 0xFFFFFFFF.toInt(), inkPrimary = 0xFF0F1B2D.toInt(), inkSecondary = 0xFF4A5A6E.toInt(),
-            muted = 0xFF7D8BA0.toInt(), grid = 0xFFE6ECF2.toInt(), axis = 0xFFC5D0DC.toInt(),
-            quality = 0xFF2A78D6.toInt(), stress = 0xFFEB6834.toInt(), mood = 0xFF1BAF7A.toInt()
+            surface = 0xFFFFFFFF.toInt(), inkPrimary = 0xFF111418.toInt(), inkSecondary = 0xFF4A5260.toInt(),
+            muted = 0xFF6B7380.toInt(), grid = 0xFFEDEFF2.toInt(), axis = 0xFFC9CED6.toInt(),
+            quality = 0xFF2A6FD6.toInt(), stress = 0xFFE0612D.toInt(), mood = 0xFF14946B.toInt()
         )
+        /** On the app's page colour (the dashboard draws charts directly on the page, not in a card). */
         val Dark = ChartColors(
-            surface = 0xFF0C1828.toInt(), inkPrimary = 0xFFE6EDF5.toInt(), inkSecondary = 0xFFA9B7C9.toInt(),
-            muted = 0xFF7D8CA3.toInt(), grid = 0xFF1A2A40.toInt(), axis = 0xFF2B3D57.toInt(),
-            quality = 0xFF3987E5.toInt(), stress = 0xFFD95926.toInt(), mood = 0xFF199E70.toInt()
+            surface = 0xFF0E0E0D.toInt(), inkPrimary = 0xFFEEECE7.toInt(), inkSecondary = 0xFFABA9A2.toInt(),
+            muted = 0xFF807E78.toInt(), grid = 0xFF222220.toInt(), axis = 0xFF3B3A37.toInt(),
+            quality = 0xFFD4B77F.toInt(), stress = 0xFFE38B60.toInt(), mood = 0xFF6DBE98.toInt()
         )
     }
 }
@@ -47,7 +48,13 @@ data class ChartColors(
  * Drawn on a plain [Canvas] so the app (Compose nativeCanvas) and the PDF report share one renderer.
  * @param dp pixels per dp, @param sp pixels per sp (use ~0.8 for PDF points)
  */
-class TrendChartRenderer(private val c: ChartColors, private val dp: Float, private val sp: Float) {
+class TrendChartRenderer(
+    private val c: ChartColors,
+    private val dp: Float,
+    private val sp: Float,
+    /** Optional app typeface for labels (the PDF keeps the platform default). */
+    private val typeface: android.graphics.Typeface? = null
+) {
 
     private val leftPad = 30 * dp
     private val rightPad = 40 * dp
@@ -63,10 +70,15 @@ class TrendChartRenderer(private val c: ChartColors, private val dp: Float, priv
     private val titleText = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = c.inkSecondary; textSize = 12 * sp }
     private val endText = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = c.inkPrimary; textSize = 12 * sp; isFakeBoldText = true }
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE; strokeWidth = 2 * dp; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
+        style = Paint.Style.STROKE; strokeWidth = 1.75f * dp; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
     }
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val selPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = c.inkSecondary; strokeWidth = max(1f, dp); alpha = 140 }
+
+    init {
+        if (typeface != null) listOf(tickText, xText, titleText, endText).forEach { it.typeface = typeface }
+        if (typeface != null) endText.isFakeBoldText = false
+    }
 
     private class Series(val name: String, val color: Int, val values: List<Double?>)
 
@@ -171,9 +183,9 @@ class TrendChartRenderer(private val c: ChartColors, private val dp: Float, priv
         for (s in series) {
             s.values.forEachIndexed { i, v ->
                 if (v == null) return@forEachIndexed
-                val r = if (i == selected) 5.5f * dp else 4f * dp
+                val r = if (i == selected) 4.5f * dp else 3f * dp
                 fill.color = c.surface
-                canvas.drawCircle(x(i), y(v), r + 2 * dp, fill)
+                canvas.drawCircle(x(i), y(v), r + 1.5f * dp, fill)
                 fill.color = s.color
                 canvas.drawCircle(x(i), y(v), r, fill)
             }
