@@ -1,11 +1,9 @@
 package com.companion.yogawellness.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
@@ -14,137 +12,140 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-/** Score bands (alignment, joints). Mid tones so they read on white cards and over the camera. */
+/*
+ * Design system — "Practice room"
+ *
+ * A dark, warm-neutral interface: the app is used with the phone propped up across a room, often in
+ * low light, and the camera screen is dark by nature, so every screen shares one dark identity.
+ *
+ *  - Neutrals are warm (ink, not slate) so the UI reads calm rather than technical.
+ *  - Ivory is the action colour: primary buttons and the selected option of a selector.
+ *  - Jade means "on target": active state, progress, aligned joints, positive results.
+ *  - Amber and coral are reserved for caution and problems. Data series have their own hues and are
+ *    only used inside charts and meters.
+ *  - Surfaces are mostly the page itself. Raised surfaces are kept for sheets, dialogs, media tiles
+ *    and controls; content is separated by spacing and hairlines rather than cards.
+ */
+
+/** Score bands (alignment, joints, sessions). Also used over the camera feed. */
 object ScoreColors {
-    val Green = Color(0xFF16A34A)
-    val Amber = Color(0xFFD97706)
-    val Red = Color(0xFFDC2626)
-    val Neutral = Color(0xFF94A3B8)
+    val Green = Color(0xFF6DBE98)
+    val Amber = Color(0xFFE2AE52)
+    val Red = Color(0xFFE8705E)
+    val Neutral = Color(0xFF8C8A84)
 }
 
-/**
- * Semantic colour tokens. Neutral surfaces carry the UI; the single accent marks primary actions
- * and selection; status and data colours are used only where they carry meaning.
- */
 @Immutable
 data class AppColors(
-    val background: Color,
-    val surface: Color,
-    /** Recessed fills: inputs, segmented-control tracks, thumbnail tiles. */
-    val sunken: Color,
-    val border: Color,
-    val borderStrong: Color,
+    /** Page background. */
+    val canvas: Color,
+    /** Sheets, dialogs and the bottom navigation. */
+    val raised: Color,
+    /** Inputs, selector tracks, media tiles, unselected chips. */
+    val control: Color,
+    /** Pressed / emphasised control fill. */
+    val controlHigh: Color,
+    /** Hairline dividers. */
+    val line: Color,
+    /** Outlines of secondary buttons and unchecked controls. */
+    val lineStrong: Color,
     val text: Color,
     val textSecondary: Color,
     val textTertiary: Color,
+    val textDisabled: Color,
+    /** Ivory: primary-action fill and the selected option of a selector. */
+    val inverse: Color,
+    val onInverse: Color,
+    /** Jade: on target, active, progress. */
     val accent: Color,
     val onAccent: Color,
-    val accentSoft: Color,
-    val onAccentSoft: Color,
-    val positive: Color,
-    val positiveSoft: Color,
+    val accentMuted: Color,
     val warning: Color,
-    val warningSoft: Color,
+    val warningMuted: Color,
     val negative: Color,
-    val negativeSoft: Color,
+    val negativeMuted: Color,
     /** Data series — the same hues as the trend chart. */
     val mood: Color,
     val stress: Color,
     val sleep: Color,
-    val isDark: Boolean
+    val quality: Color
 )
 
-private val Light = AppColors(
-    background = Color(0xFFF5F6F8),
-    surface = Color(0xFFFFFFFF),
-    sunken = Color(0xFFEFF1F4),
-    border = Color(0xFFE3E6EB),
-    borderStrong = Color(0xFFC9CED6),
-    text = Color(0xFF111418),
-    textSecondary = Color(0xFF4A5260),
-    textTertiary = Color(0xFF6B7380),
-    accent = Color(0xFF0B6E6A),
-    onAccent = Color.White,
-    accentSoft = Color(0xFFE2F1EF),
-    onAccentSoft = Color(0xFF064A47),
-    positive = Color(0xFF15803D),
-    positiveSoft = Color(0xFFE6F4EA),
-    warning = Color(0xFF9A5B06),
-    warningSoft = Color(0xFFFBF1DE),
-    negative = Color(0xFFBE2A2A),
-    negativeSoft = Color(0xFFFCE9E9),
-    mood = Color(0xFF14946B),
-    stress = Color(0xFFE0612D),
-    sleep = Color(0xFF2A6FD6),
-    isDark = false
+private val Ink = AppColors(
+    canvas = Color(0xFF0E0E0D),
+    raised = Color(0xFF171716),
+    control = Color(0xFF1F1F1D),
+    controlHigh = Color(0xFF292927),
+    line = Color(0xFF262624),
+    lineStrong = Color(0xFF3B3A37),
+    text = Color(0xFFEEECE7),
+    textSecondary = Color(0xFFABA9A2),
+    textTertiary = Color(0xFF807E78),
+    textDisabled = Color(0xFF57564F),
+    inverse = Color(0xFFEEECE7),
+    onInverse = Color(0xFF0E0E0D),
+    accent = Color(0xFF6DBE98),
+    onAccent = Color(0xFF0B1A13),
+    accentMuted = Color(0xFF1A2A22),
+    warning = Color(0xFFE2AE52),
+    warningMuted = Color(0xFF2D2416),
+    negative = Color(0xFFE8705E),
+    negativeMuted = Color(0xFF301B17),
+    mood = Color(0xFF6DBE98),
+    stress = Color(0xFFE38B60),
+    sleep = Color(0xFF8EA5E8),
+    quality = Color(0xFFD4B77F)
 )
 
-private val Dark = AppColors(
-    background = Color(0xFF0E1013),
-    surface = Color(0xFF171A1F),
-    sunken = Color(0xFF1F2329),
-    border = Color(0xFF2A2F36),
-    borderStrong = Color(0xFF3B424C),
-    text = Color(0xFFF1F3F5),
-    textSecondary = Color(0xFFB4BAC4),
-    textTertiary = Color(0xFF8B929D),
-    accent = Color(0xFF4CB8B1),
-    onAccent = Color(0xFF002321),
-    accentSoft = Color(0xFF143331),
-    onAccentSoft = Color(0xFFA9E2DE),
-    positive = Color(0xFF4CC07A),
-    positiveSoft = Color(0xFF14301F),
-    warning = Color(0xFFE5A62A),
-    warningSoft = Color(0xFF33270F),
-    negative = Color(0xFFF07272),
-    negativeSoft = Color(0xFF3A1A1A),
-    mood = Color(0xFF34C08E),
-    stress = Color(0xFFF07A45),
-    sleep = Color(0xFF5B95EC),
-    isDark = true
+private val LocalAppColors = staticCompositionLocalOf { Ink }
+
+private fun scheme(c: AppColors) = darkColorScheme(
+    primary = c.accent, onPrimary = c.onAccent, primaryContainer = c.accentMuted, onPrimaryContainer = c.accent,
+    secondary = c.textSecondary, onSecondary = c.canvas, secondaryContainer = c.control, onSecondaryContainer = c.text,
+    tertiary = c.accent, onTertiary = c.onAccent,
+    background = c.canvas, onBackground = c.text,
+    surface = c.raised, onSurface = c.text, surfaceVariant = c.control, onSurfaceVariant = c.textSecondary,
+    surfaceTint = Color.Transparent,
+    surfaceContainerLowest = c.canvas, surfaceContainerLow = c.raised, surfaceContainer = c.raised,
+    surfaceContainerHigh = c.raised, surfaceContainerHighest = c.control,
+    inverseSurface = c.inverse, inverseOnSurface = c.onInverse,
+    outline = c.lineStrong, outlineVariant = c.line,
+    scrim = Color.Black.copy(alpha = 0.6f),
+    error = c.negative, onError = c.canvas, errorContainer = c.negativeMuted, onErrorContainer = c.negative
 )
 
-private val LocalAppColors = staticCompositionLocalOf { Light }
+/** Corner radii: 4 for small marks, 8 for anything you press or type into, 12 for media and sheets. */
+object Radius {
+    val S = 4.dp
+    val M = 8.dp
+    val L = 12.dp
+}
 
-private fun scheme(c: AppColors) = if (c.isDark) {
-    darkColorScheme(
-        primary = c.accent, onPrimary = c.onAccent, primaryContainer = c.accentSoft, onPrimaryContainer = c.onAccentSoft,
-        secondary = c.textSecondary, onSecondary = c.background, secondaryContainer = c.sunken, onSecondaryContainer = c.text,
-        tertiary = c.accent, onTertiary = c.onAccent,
-        background = c.background, onBackground = c.text,
-        surface = c.surface, onSurface = c.text, surfaceVariant = c.sunken, onSurfaceVariant = c.textSecondary,
-        surfaceContainerLowest = c.background, surfaceContainerLow = c.surface, surfaceContainer = c.surface,
-        surfaceContainerHigh = c.surface, surfaceContainerHighest = c.sunken,
-        outline = c.borderStrong, outlineVariant = c.border,
-        error = c.negative, onError = c.background, errorContainer = c.negativeSoft, onErrorContainer = c.negative
-    )
-} else {
-    lightColorScheme(
-        primary = c.accent, onPrimary = c.onAccent, primaryContainer = c.accentSoft, onPrimaryContainer = c.onAccentSoft,
-        secondary = c.textSecondary, onSecondary = c.surface, secondaryContainer = c.sunken, onSecondaryContainer = c.text,
-        tertiary = c.accent, onTertiary = c.onAccent,
-        background = c.background, onBackground = c.text,
-        surface = c.surface, onSurface = c.text, surfaceVariant = c.sunken, onSurfaceVariant = c.textSecondary,
-        surfaceContainerLowest = c.surface, surfaceContainerLow = c.surface, surfaceContainer = c.surface,
-        surfaceContainerHigh = c.surface, surfaceContainerHighest = c.sunken,
-        outline = c.borderStrong, outlineVariant = c.border,
-        error = c.negative, onError = Color.White, errorContainer = c.negativeSoft, onErrorContainer = c.negative
-    )
+/** 4-point spacing scale. [Gutter] is the page margin. */
+object Space {
+    val XXS = 2.dp
+    val XS = 4.dp
+    val S = 8.dp
+    val M = 12.dp
+    val L = 16.dp
+    val XL = 24.dp
+    val XXL = 32.dp
+    val Gutter = 20.dp
 }
 
 private val AppShapes = Shapes(
-    extraSmall = RoundedCornerShape(6.dp),
-    small = RoundedCornerShape(8.dp),
-    medium = RoundedCornerShape(12.dp),
-    large = RoundedCornerShape(14.dp),
-    extraLarge = RoundedCornerShape(20.dp)
+    extraSmall = RoundedCornerShape(Radius.S),
+    small = RoundedCornerShape(Radius.M),
+    medium = RoundedCornerShape(Radius.M),
+    large = RoundedCornerShape(Radius.L),
+    extraLarge = RoundedCornerShape(Radius.L)
 )
 
+/** The app is dark-only: one identity across the camera screen and everything around it. */
 @Composable
-fun YogaWellnessTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    val colors = if (darkTheme) Dark else Light
-    CompositionLocalProvider(LocalAppColors provides colors) {
-        MaterialTheme(colorScheme = scheme(colors), typography = AppTypography, shapes = AppShapes, content = content)
+fun YogaWellnessTheme(content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalAppColors provides Ink) {
+        MaterialTheme(colorScheme = scheme(Ink), typography = AppTypography, shapes = AppShapes, content = content)
     }
 }
 

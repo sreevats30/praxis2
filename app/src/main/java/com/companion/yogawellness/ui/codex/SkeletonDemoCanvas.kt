@@ -70,30 +70,30 @@ class DemoPalette(
     val pillText: Color
 )
 
-/** The 3D viewer: a dark technical viewport, light bones, accent at the hold, amber angle arcs. */
+/** The 3D viewer: a recessed viewport, light bones, jade at the hold, amber angle arcs. */
 object DemoColors {
-    val Background = Color(0xFF121519)
+    val Background = Color(0xFF151514)
     val Viewer = DemoPalette(
         background = Background,
-        backgroundTop = Color(0xFF1B1F25),
-        peakBone = Color(0xFF5CC8C2),
-        movingBone = Color(0xFFB7BEC7),
-        joint = Color(0xFFFFFFFF),
-        floor = Color(0xFF3A414B),
-        plumb = Color(0x66FFFFFF),
-        arc = Color(0xFFF2B33D),
+        backgroundTop = Color(0xFF1B1B19),
+        peakBone = Color(0xFF6DBE98),
+        movingBone = Color(0xFFBDBAB2),
+        joint = Color(0xFFEEECE7),
+        floor = Color(0xFF3B3A37),
+        plumb = Color(0x59EEECE7),
+        arc = Color(0xFFE2AE52),
         pillBg = Color(0xE6000000),
-        pillText = Color.White
+        pillText = Color(0xFFEEECE7)
     )
 }
 
-/** List thumbnails follow the app theme: recessed tile, ink-coloured figure. */
+/** List thumbnails: recessed tile, ink-coloured figure. */
 @Composable
 fun thumbnailPalette(): DemoPalette {
     val c = AppTheme.colors
     return DemoPalette(
-        background = c.sunken, backgroundTop = c.sunken, peakBone = c.text, movingBone = c.textSecondary,
-        joint = c.text, floor = c.borderStrong, plumb = c.borderStrong, arc = c.warning, pillBg = c.surface, pillText = c.text
+        background = c.control, backgroundTop = c.control, peakBone = c.text, movingBone = c.textSecondary,
+        joint = c.text, floor = c.lineStrong, plumb = c.lineStrong, arc = c.warning, pillBg = c.raised, pillText = c.text
     )
 }
 

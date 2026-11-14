@@ -77,7 +77,7 @@ class CodexRenderTest {
         compose.onNodeWithText("Learn").assertExists()
         compose.onNodeWithText("1. Cat-Cow Flow").assertExists()
         save("codex_list")
-        compose.onNodeWithText("Live-scored").performClick()
+        compose.onNodeWithText("Scored live").performClick()
         listOf("14. Warrior II", "15. Chair Pose", "19. Tree Pose", "24. Triangle Pose").forEach {
             compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(it))
             compose.onNodeWithText(it).assertExists()
@@ -96,7 +96,7 @@ class CodexRenderTest {
         compose.onNodeWithContentDescription("Warrior II demo", substring = true).assertExists()
         compose.onNodeWithText("Play").assertExists() // paused at the peak: a visible Play button
         save("codex_detail_warrior_2")
-        compose.onNodeWithText("Practice this live").performScrollTo().performClick()
+        compose.onNodeWithText("Practice this live").performClick() // pinned to the bottom of the screen
         assertEquals(Asana.VIRABHADRASANA_II, practised)
         compose.onNodeWithText(CodexText.GLOBAL_DISCLAIMER).assertExists()
         save("codex_detail_warrior_2_bottom")

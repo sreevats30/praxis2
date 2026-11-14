@@ -3,26 +3,17 @@ package com.companion.yogawellness.ui.dashboard
 import android.content.ActivityNotFoundException
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.FileDownload
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,28 +32,32 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.companion.yogawellness.R
 import com.companion.yogawellness.stats.RankStatsEngine
 import com.companion.yogawellness.ui.components.AppScreen
+import com.companion.yogawellness.ui.components.EmptyState
 import com.companion.yogawellness.ui.components.Hairline
+import com.companion.yogawellness.ui.components.IconAction
+import com.companion.yogawellness.ui.components.LoadingState
 import com.companion.yogawellness.ui.components.Notice
-import com.companion.yogawellness.ui.components.Panel
-import com.companion.yogawellness.ui.components.PanelHeader
-import com.companion.yogawellness.ui.components.ScreenColumn
 import com.companion.yogawellness.ui.components.SecondaryButton
-import com.companion.yogawellness.ui.components.SectionLabel
+import com.companion.yogawellness.ui.components.Section
 import com.companion.yogawellness.ui.components.Stat
-import com.companion.yogawellness.ui.components.Tag
+import com.companion.yogawellness.ui.components.StatusLabel
+import com.companion.yogawellness.ui.components.TextAction
 import com.companion.yogawellness.ui.components.Tone
-import com.companion.yogawellness.ui.components.VerticalHairline
 import com.companion.yogawellness.ui.profile.DemoBannerBar
 import com.companion.yogawellness.ui.profile.ProfileSelectorBar
 import com.companion.yogawellness.ui.theme.AppTheme
 import com.companion.yogawellness.ui.theme.NumericStyle
+import com.companion.yogawellness.ui.theme.SanskritStyle
+import com.companion.yogawellness.ui.theme.Space
 import com.companion.yogawellness.wellness.DashboardBuilder
 import com.companion.yogawellness.wellness.DashboardData
 import com.companion.yogawellness.wellness.InsightCard
@@ -94,7 +89,7 @@ fun WellnessDashboardScreen(onBack: (() -> Unit)? = null, vm: DashboardViewModel
         profileData?.data, profileData?.demoLabel, error, onBack, export,
         profiles = {
             ProfileSelectorBar()
-            DemoBannerBar()
+            DemoBannerBar(Modifier.padding(horizontal = Space.Gutter))
         }
     )
 }
@@ -115,65 +110,58 @@ fun DashboardScreenContent(
     val c = AppTheme.colors
     AppScreen(
         title = "Insights",
-        large = true,
         onBack = onBack,
+        largeTitle = true,
+        subtitle = "The last ${DashboardBuilder.WINDOW_DAYS / 7} weeks, analysed on this phone." +
+            (demoLabel?.let { " Showing $it." } ?: ""),
         // No report to export until there is real data (a new account starts empty).
         actions = {
-            if (data != null && !data.isEmpty) {
-                IconButton(onClick = onExport) { Icon(Icons.Outlined.FileDownload, contentDescription = "Export weekly PDF report") }
-            }
+            if (data != null && !data.isEmpty) IconAction(Icons.Outlined.FileDownload, "Export weekly PDF report", onExport)
         }
-    ) { padding ->
-        ScreenColumn(padding) {
-            Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "Last ${DashboardBuilder.WINDOW_DAYS / 7} weeks · analysed on this phone",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = c.textSecondary
-                )
-                demoLabel?.let { Tag(it, tone = Tone.WARNING) }
-            }
-            profiles()
-            error?.let { Notice(it, Icons.Outlined.ErrorOutline, tone = Tone.NEGATIVE) }
-            when {
-                data == null -> Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = c.textTertiary)
-                        Text("Calculating…", style = MaterialTheme.typography.bodyMedium, color = c.textTertiary)
-                    }
-                }
-                data.isEmpty -> EmptyState()
-                else -> DashboardContent(data, onExport)
-            }
+    ) {
+        profiles()
+        error?.let { Notice(it, Modifier.padding(horizontal = Space.Gutter, vertical = Space.S), tone = Tone.NEGATIVE, title = "Export failed") }
+        when {
+            data == null -> LoadingState("Calculating…", Modifier.padding(horizontal = Space.Gutter))
+            data.isEmpty -> EmptyState(
+                "Your insights start here",
+                "Log a few daily check-ins and practice sessions to see your trends — or load a demo persona in Settings.",
+                Modifier.padding(start = Space.Gutter, end = Space.Gutter, top = Space.L)
+            )
+            else -> DashboardContent(data, onExport)
         }
-    }
-}
-
-@Composable
-private fun EmptyState() {
-    Panel(spacing = 6.dp) {
-        Text("Your insights start here", style = MaterialTheme.typography.titleMedium, color = AppTheme.colors.text)
-        Text(
-            "Log a few daily check-ins and practice sessions to see your trends — or load a demo persona in Settings.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = AppTheme.colors.textSecondary
-        )
     }
 }
 
 @Composable
 fun DashboardContent(d: DashboardData, onExport: () -> Unit) {
-    SectionLabel("This week")
-    StatGrid(d)
-    SectionLabel("Trend")
-    TrendCard(d.weeks)
-    SectionLabel("Left vs right")
-    SymmetryCard(d)
-    if (d.insights.isNotEmpty()) SectionLabel("Statistics")
-    d.insights.forEach { InsightCardView(it) }
-    SectionLabel("Self-reflection")
-    ReflectionCard(d)
-    SecondaryButton("Export PDF report", onExport, Modifier.fillMaxWidth().padding(top = 8.dp), icon = Icons.Outlined.FileDownload)
+    Section(title = "This week", divider = false) { StatGrid(d) }
+    Section(title = "Weekly trend") { TrendChart(d.weeks) }
+    if (d.insights.isNotEmpty()) {
+        Section(title = "Patterns", spacing = Space.XL) {
+            d.insights.forEachIndexed { i, card ->
+                if (i > 0) Hairline()
+                InsightView(card)
+            }
+            // The caveats are the same for every finding: stated once, after them.
+            Text(
+                "Spearman rank correlation with a ${RankStatsEngine.DEFAULT_SHUFFLES}-shuffle permutation test. " +
+                    RankStatsEngine.CAVEAT_CAUSATION + " " + RankStatsEngine.CAVEAT_AUTOCORRELATION.removePrefix("Note: "),
+                style = MaterialTheme.typography.bodySmall,
+                color = AppTheme.colors.textTertiary
+            )
+        }
+    }
+    Section(title = "Left and right sides", spacing = Space.L) { Symmetry(d) }
+    Section(title = "Self-reflection", spacing = 0.dp) { Reflections(d) }
+    Section {
+        SecondaryButton("Export PDF report", onExport, Modifier.fillMaxWidth(), icon = Icons.Outlined.FileDownload)
+        Text(
+            "A one-page summary of this week to keep or share. It is created on this phone.",
+            style = MaterialTheme.typography.bodySmall,
+            color = AppTheme.colors.textTertiary
+        )
+    }
 }
 
 @Composable
@@ -182,19 +170,13 @@ private fun StatGrid(d: DashboardData) {
     val q = h.meanQuality
     val p = h.previousWeekQuality
     val delta = if (q != null && p != null) "${if (q >= p) "+" else "−"}${f0(kotlin.math.abs(q - p))} vs last week" else "average"
-    Panel(contentPadding = PaddingValues(0.dp), spacing = 0.dp) {
-        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Space.XL)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Space.L)) {
             Stat("Practice", f0(h.practiceMinutes), Modifier.weight(1f), unit = "min", caption = "${h.sessions} sessions")
-            VerticalHairline()
-            Stat(
-                "Alignment", q?.let { f0(it) } ?: "–", Modifier.weight(1f), unit = q?.let { "%" }, caption = delta,
-                valueColor = AppTheme.colors.text
-            )
+            Stat("Alignment", q?.let { f0(it) } ?: "–", Modifier.weight(1f), unit = q?.let { "%" }, caption = delta)
         }
-        Hairline()
-        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Space.L)) {
             Stat("Check-ins", "${h.checkInDays} / 7", Modifier.weight(1f), caption = "days logged")
-            VerticalHairline()
             val t = d.tension
             Stat(
                 "Body tension", t?.let { "${f1(it.meanBefore)} → ${f1(it.meanAfter)}" } ?: "–", Modifier.weight(1f),
@@ -205,58 +187,52 @@ private fun StatGrid(d: DashboardData) {
 }
 
 @Composable
-private fun TrendCard(weeks: List<WeeklyRow>) {
+private fun TrendChart(weeks: List<WeeklyRow>) {
     val context = LocalContext.current
-    val colors = if (isSystemInDarkTheme()) ChartColors.Dark else ChartColors.Light
     val density = LocalDensity.current
     val typeface = remember { runCatching { ResourcesCompat.getFont(context, R.font.inter_regular) }.getOrNull() }
-    val renderer = remember(colors, density, typeface) {
-        TrendChartRenderer(colors, density.density, density.density * density.fontScale, typeface)
+    val renderer = remember(density, typeface) {
+        TrendChartRenderer(ChartColors.Dark, density.density, density.density * density.fontScale, typeface)
     }
     val labels = weeks.map { LocalDate.ofEpochDay(it.weekStartEpochDay).format(SHORT) }
     var selected by remember(weeks) { mutableStateOf<Int?>(null) }
     var showTable by remember { mutableStateOf(false) }
     val c = AppTheme.colors
 
-    Panel(spacing = 8.dp) {
-        PanelHeader("Weekly trend", subtitle = "${weeks.size} weeks · tap a week for its values")
-        Canvas(
-            Modifier
-                .fillMaxWidth()
-                .height(272.dp)
-                .semantics {
-                    contentDescription = "Weekly practice quality, stress and mood over ${weeks.size} weeks. Tap a week for values."
+    Text("${weeks.size} weeks · tap a week to read its values", style = MaterialTheme.typography.bodySmall, color = c.textTertiary)
+    Canvas(
+        Modifier
+            .fillMaxWidth()
+            .height(256.dp)
+            .semantics {
+                contentDescription = "Weekly practice quality, stress and mood over ${weeks.size} weeks. Tap a week for values."
+            }
+            .pointerInput(weeks) {
+                detectTapGestures { pos ->
+                    val i = renderer.indexAt(pos.x, size.width.toFloat(), weeks.size)
+                    selected = if (i == selected) null else i
                 }
-                .pointerInput(weeks) {
-                    detectTapGestures { pos ->
-                        val i = renderer.indexAt(pos.x, size.width.toFloat(), weeks.size)
-                        selected = if (i == selected) null else i
-                    }
-                }
-        ) {
-            drawIntoCanvas { renderer.draw(it.nativeCanvas, size.width, size.height, weeks, labels, selected) }
-        }
-        val sel = selected
-        if (sel != null && sel < weeks.size) {
-            val w = weeks[sel]
-            Text(
-                "Week of ${labels[sel]}: quality ${w.practiceQuality?.let { f0(it) } ?: "–"} · stress ${w.meanStress?.let { f1(it) } ?: "–"}" +
-                    " · mood ${w.meanMood?.let { f1(it) } ?: "–"} · ${f0(w.practiceMinutes)} min practice",
-                style = MaterialTheme.typography.bodySmall,
-                color = c.text
-            )
-        }
-        Hairline()
-        TextButton(onClick = { showTable = !showTable }, contentPadding = PaddingValues(0.dp)) {
-            Text(if (showTable) "Hide table" else "Show as table", style = MaterialTheme.typography.labelLarge, color = c.accent)
-        }
-        if (showTable) TrendTable(weeks, labels)
+            }
+    ) {
+        drawIntoCanvas { renderer.draw(it.nativeCanvas, size.width, size.height, weeks, labels, selected) }
     }
+    val sel = selected
+    if (sel != null && sel < weeks.size) {
+        val w = weeks[sel]
+        Text(
+            "Week of ${labels[sel]}: quality ${w.practiceQuality?.let { f0(it) } ?: "–"} · stress ${w.meanStress?.let { f1(it) } ?: "–"}" +
+                " · mood ${w.meanMood?.let { f1(it) } ?: "–"} · ${f0(w.practiceMinutes)} min practice",
+            style = MaterialTheme.typography.bodySmall,
+            color = c.text
+        )
+    }
+    TextAction(if (showTable) "Hide table" else "Show as table", { showTable = !showTable }, Modifier.offset(x = (-Space.S)))
+    if (showTable) TrendTable(weeks, labels)
 }
 
 @Composable
 private fun TrendTable(weeks: List<WeeklyRow>, labels: List<String>) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Space.S)) {
         TableRow("Week", "Quality", "Stress", "Mood", "Min", header = true)
         Hairline()
         weeks.forEachIndexed { i, w ->
@@ -271,76 +247,20 @@ private fun TrendTable(weeks: List<WeeklyRow>, labels: List<String>) {
 @Composable
 private fun TableRow(vararg cells: String, header: Boolean = false) {
     Row {
-        cells.forEach {
+        cells.forEachIndexed { i, text ->
             Text(
-                it, Modifier.weight(1f),
-                style = if (header) MaterialTheme.typography.labelMedium else NumericStyle.copy(fontSize = MaterialTheme.typography.bodySmall.fontSize, fontWeight = FontWeight.Normal),
-                color = if (header) AppTheme.colors.textTertiary else AppTheme.colors.text
+                text, Modifier.weight(if (i == 0) 1.3f else 1f),
+                style = if (header) MaterialTheme.typography.labelMedium else NumericStyle.copy(fontSize = 13.sp, fontWeight = FontWeight.Normal),
+                color = if (header) AppTheme.colors.textTertiary else AppTheme.colors.text,
+                textAlign = if (i == 0) TextAlign.Start else TextAlign.End
             )
         }
     }
 }
 
+/** The finding as a sentence (serif), its statistics as figures, and the caveats in small type. */
 @Composable
-private fun SymmetryCard(d: DashboardData) {
-    val c = AppTheme.colors
-    Panel(spacing = 14.dp) {
-        if (d.symmetry.isEmpty()) {
-            Text("Practise both sides of Tree, Warrior II or Triangle to compare them.", style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
-            return@Panel
-        }
-        Row {
-            Text("Left", style = MaterialTheme.typography.labelMedium, color = c.textTertiary, modifier = Modifier.weight(1f))
-            Text("Mean best hold", style = MaterialTheme.typography.labelMedium, color = c.textTertiary)
-            Text("Right", style = MaterialTheme.typography.labelMedium, color = c.textTertiary, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
-        }
-        val maxHold = d.symmetry.maxOfOrNull { maxOf(it.leftHoldSec, it.rightHoldSec) }?.takeIf { it > 0 } ?: 1.0
-        d.symmetry.forEachIndexed { i, s ->
-            if (i > 0) Hairline()
-            SymmetryRowView(s, maxHold)
-        }
-    }
-}
-
-@Composable
-private fun SymmetryRowView(s: SymmetryRow, maxHold: Double) {
-    val c = AppTheme.colors
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(s.asana.sanskritName, style = MaterialTheme.typography.titleSmall, color = c.text)
-                Text(s.asana.englishName, style = MaterialTheme.typography.bodySmall, color = c.textTertiary)
-            }
-            s.holdSymmetryPct?.let { Tag("${f0(it)}% symmetric", tone = if (it >= 85) Tone.POSITIVE else Tone.WARNING) }
-        }
-        // Mirrored bars from a centre line: left grows leftwards, right rightwards.
-        Canvas(
-            Modifier
-                .fillMaxWidth()
-                .height(8.dp)
-                .semantics { contentDescription = "Left ${f1(s.leftHoldSec)} seconds, right ${f1(s.rightHoldSec)} seconds" }
-        ) {
-            val mid = size.width / 2
-            val gap = 2.dp.toPx()
-            val r = CornerRadius(size.height / 2, size.height / 2)
-            drawRoundRect(c.sunken, Offset(0f, 0f), Size(mid - gap, size.height), r)
-            drawRoundRect(c.sunken, Offset(mid + gap, 0f), Size(mid - gap, size.height), r)
-            val lw = ((mid - gap) * (s.leftHoldSec / maxHold)).toFloat()
-            val rw = ((mid - gap) * (s.rightHoldSec / maxHold)).toFloat()
-            if (lw > 0) drawRoundRect(c.accent, Offset(mid - gap - lw, 0f), Size(lw, size.height), r)
-            if (rw > 0) drawRoundRect(c.textSecondary, Offset(mid + gap, 0f), Size(rw, size.height), r)
-        }
-        Text(
-            "Mean best hold: left ${f1(s.leftHoldSec)} s · right ${f1(s.rightHoldSec)} s" +
-                if (s.leftScore != null && s.rightScore != null) " · alignment ${f0(s.leftScore)}% / ${f0(s.rightScore)}%" else "",
-            style = MaterialTheme.typography.bodySmall,
-            color = c.textSecondary
-        )
-    }
-}
-
-@Composable
-private fun InsightCardView(card: InsightCard) {
+private fun InsightView(card: InsightCard) {
     val r = card.result
     val c = AppTheme.colors
     val (label, tone) = when {
@@ -348,61 +268,115 @@ private fun InsightCardView(card: InsightCard) {
         r.pValue < RankStatsEngine.SIGNIFICANCE -> "Pattern found" to Tone.POSITIVE
         else -> "No clear pattern" to Tone.NEUTRAL
     }
-    Panel(spacing = 10.dp) {
-        PanelHeader(card.title, subtitle = "Spearman ρ · permutation test", trailing = { Tag(label, tone = tone) })
-        Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+    // The PDF keeps the full text; here the statistics move out of the sentence into their own row.
+    val caveatAt = card.text.indexOf(RankStatsEngine.CAVEAT_CAUSATION)
+    val finding = (if (caveatAt > 0) card.text.substring(0, caveatAt) else card.text).replace(STATS_IN_TEXT, "").trim()
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(card.title, style = MaterialTheme.typography.titleSmall, color = c.textSecondary, modifier = Modifier.weight(1f))
+            StatusLabel(label, tone)
+        }
+        Text(finding, style = MaterialTheme.typography.headlineSmall, color = c.text)
+        Row(horizontalArrangement = Arrangement.spacedBy(Space.XL)) {
             StatInline("ρ", r.rho?.let { String.format(Locale.US, "%+.2f", it) } ?: "n/a")
             r.pValue?.let { StatInline("p", if (it < 0.001) "< 0.001" else String.format(Locale.US, "%.3f", it)) }
             StatInline("n", "${r.n} days")
         }
-        // The finding reads first; the standing caveats follow in smaller type (the PDF keeps the full text).
-        val caveatAt = card.text.indexOf(RankStatsEngine.CAVEAT_CAUSATION)
-        Text(
-            if (caveatAt > 0) card.text.substring(0, caveatAt).trim() else card.text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = c.text
-        )
-        if (caveatAt > 0) {
+    }
+}
+
+/** "(ρ = -0.81, p < 0.001, n = 42 days)" inside a generated sentence. */
+private val STATS_IN_TEXT = Regex("""\s*\(ρ = [^)]*\)""")
+
+@Composable
+private fun StatInline(symbol: String, value: String) {
+    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(symbol, style = MaterialTheme.typography.bodyMedium, color = AppTheme.colors.textTertiary)
+        Text(value, style = NumericStyle.copy(fontSize = 15.sp), color = AppTheme.colors.text)
+    }
+}
+
+@Composable
+private fun Symmetry(d: DashboardData) {
+    val c = AppTheme.colors
+    if (d.symmetry.isEmpty()) {
+        Text("Practise both sides of Tree, Warrior II or Triangle to compare them.", style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
+        return
+    }
+    Text("Mean best hold on each side. Bars grow outwards from the centre.", style = MaterialTheme.typography.bodySmall, color = c.textTertiary)
+    val maxHold = d.symmetry.maxOfOrNull { maxOf(it.leftHoldSec, it.rightHoldSec) }?.takeIf { it > 0 } ?: 1.0
+    d.symmetry.forEach { SymmetryRowView(it, maxHold) }
+}
+
+@Composable
+private fun SymmetryRowView(s: SymmetryRow, maxHold: Double) {
+    val c = AppTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(Space.S)) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Column(Modifier.weight(1f)) {
+                Text(s.asana.englishName, style = MaterialTheme.typography.titleSmall, color = c.text)
+                Text(s.asana.sanskritName, style = SanskritStyle.copy(fontSize = 14.sp), color = c.textTertiary)
+            }
+            s.holdSymmetryPct?.let { StatusLabel("${f0(it)}% symmetric", if (it >= 85) Tone.POSITIVE else Tone.WARNING) }
+        }
+        // Mirrored bars from a centre line: left grows leftwards, right rightwards.
+        Canvas(
+            Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .semantics { contentDescription = "Left ${f1(s.leftHoldSec)} seconds, right ${f1(s.rightHoldSec)} seconds" }
+        ) {
+            val mid = size.width / 2
+            val gap = 2.dp.toPx()
+            val r = CornerRadius(size.height / 2, size.height / 2)
+            drawRoundRect(c.control, Offset(0f, 0f), Size(mid - gap, size.height), r)
+            drawRoundRect(c.control, Offset(mid + gap, 0f), Size(mid - gap, size.height), r)
+            val lw = ((mid - gap) * (s.leftHoldSec / maxHold)).toFloat()
+            val rw = ((mid - gap) * (s.rightHoldSec / maxHold)).toFloat()
+            if (lw > 0) drawRoundRect(c.text, Offset(mid - gap - lw, 0f), Size(lw, size.height), r)
+            if (rw > 0) drawRoundRect(c.textTertiary, Offset(mid + gap, 0f), Size(rw, size.height), r)
+        }
+        Row {
             Text(
-                card.text.substring(caveatAt).replace("Note: ", ""),
-                style = MaterialTheme.typography.bodySmall,
-                color = c.textTertiary
+                "Left ${f1(s.leftHoldSec)} s" + (s.leftScore?.let { " · ${f0(it)}%" } ?: ""),
+                style = NumericStyle.copy(fontSize = 12.sp, fontWeight = FontWeight.Normal), color = c.textSecondary, modifier = Modifier.weight(1f)
+            )
+            Text(
+                "Right ${f1(s.rightHoldSec)} s" + (s.rightScore?.let { " · ${f0(it)}%" } ?: ""),
+                style = NumericStyle.copy(fontSize = 12.sp, fontWeight = FontWeight.Normal), color = c.textSecondary
             )
         }
     }
 }
 
 @Composable
-private fun StatInline(symbol: String, value: String) {
-    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(symbol, style = MaterialTheme.typography.labelLarge, color = AppTheme.colors.textTertiary)
-        Text(value, style = NumericStyle.copy(fontSize = MaterialTheme.typography.titleMedium.fontSize), color = AppTheme.colors.text)
-    }
-}
-
-@Composable
-private fun ReflectionCard(d: DashboardData) {
+private fun Reflections(d: DashboardData) {
     val c = AppTheme.colors
-    Panel(spacing = 12.dp) {
-        listOf(QuestionnaireType.PHQ9 to d.phq, QuestionnaireType.GAD7 to d.gad).forEachIndexed { i, (type, list) ->
-            if (i > 0) Hairline()
-            Row(verticalAlignment = Alignment.Top) {
-                Text(type.shortName, style = MaterialTheme.typography.titleSmall, color = c.text, modifier = Modifier.weight(0.3f))
-                if (list.isEmpty()) {
-                    Text("${type.shortName}: not completed yet", style = MaterialTheme.typography.bodyMedium, color = c.textTertiary, modifier = Modifier.weight(0.7f))
-                } else {
-                    Row(Modifier.weight(0.7f), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        list.takeLast(4).forEach { q ->
-                            Column {
-                                Text("${q.totalScore}/${type.maxScore}", style = NumericStyle.copy(fontSize = MaterialTheme.typography.bodyLarge.fontSize), color = c.text)
-                                Text(LocalDate.ofEpochDay(q.epochDay).format(SHORT), style = MaterialTheme.typography.labelSmall, color = c.textTertiary)
-                            }
+    listOf(QuestionnaireType.PHQ9 to d.phq, QuestionnaireType.GAD7 to d.gad).forEachIndexed { i, (type, list) ->
+        if (i > 0) Hairline()
+        Row(Modifier.fillMaxWidth().padding(vertical = Space.M), verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(0.38f)) {
+                Text(type.shortName, style = MaterialTheme.typography.titleSmall, color = c.text)
+                Text("out of ${type.maxScore}", style = MaterialTheme.typography.bodySmall, color = c.textTertiary)
+            }
+            if (list.isEmpty()) {
+                Text("Not completed yet", style = MaterialTheme.typography.bodyMedium, color = c.textTertiary, modifier = Modifier.weight(0.62f))
+            } else {
+                Row(Modifier.weight(0.62f), horizontalArrangement = Arrangement.spacedBy(Space.L)) {
+                    list.takeLast(4).forEach { q ->
+                        Column {
+                            Text("${q.totalScore}", style = NumericStyle.copy(fontSize = 17.sp), color = c.text)
+                            Text(LocalDate.ofEpochDay(q.epochDay).format(SHORT), style = MaterialTheme.typography.labelSmall, color = c.textTertiary)
                         }
                     }
                 }
             }
         }
-        Hairline()
-        Text("Scores are for noticing change over time, not a diagnosis.", style = MaterialTheme.typography.bodySmall, color = c.textTertiary)
     }
+    Text(
+        "Scores are for noticing change over time, not a diagnosis.",
+        style = MaterialTheme.typography.bodySmall,
+        color = c.textTertiary,
+        modifier = Modifier.padding(top = Space.S)
+    )
 }

@@ -1,41 +1,14 @@
 package com.companion.yogawellness.ui.components
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.requiredSize
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
-import com.companion.yogawellness.R
 import com.companion.yogawellness.scoring.Asana
 import com.companion.yogawellness.ui.theme.AppTheme
-
-/** The launcher artwork on its own tile — the in-app brand mark (onboarding, About). */
-@Composable
-fun BrandMark(modifier: Modifier = Modifier, size: Dp = 44.dp) {
-    Box(
-        modifier
-            .size(size)
-            .clip(RoundedCornerShape(size * 0.24f))
-            .background(Color(0xFF0A3B44)),
-        contentAlignment = Alignment.Center
-    ) {
-        // The foreground art occupies the middle of its 108-unit canvas; scale it to fill the tile.
-        Image(painterResource(R.drawable.ic_launcher_foreground), contentDescription = null, modifier = Modifier.requiredSize(size * 1.75f))
-    }
-}
 
 // ---------------------------------------------------------------------------------------------
 // Pose pictograms — keypoint-style stick figures, echoing the live skeleton overlay.
@@ -97,14 +70,12 @@ private fun figureFor(asana: Asana): Figure = when (asana) {
     }
 }
 
-/** Draws [asana] as a clean line figure with small joint markers (technical-drawing style). */
+/** Draws [asana] as a single-weight line figure: bones, a ring for the head, small solid joints. */
 @Composable
 fun PoseGlyph(
     asana: Asana,
     modifier: Modifier = Modifier,
-    color: Color = AppTheme.colors.text,
-    jointColor: Color = AppTheme.colors.surface,
-    glow: Boolean = false
+    color: Color = AppTheme.colors.text
 ) {
     val fig = figureFor(asana)
     Canvas(modifier) {
@@ -112,26 +83,13 @@ fun PoseGlyph(
         val dx = (size.width - 100f * s) / 2f
         val dy = (size.height - 100f * s) / 2f
         fun m(p: Offset) = Offset(dx + p.x * s, dy + p.y * s)
-        drawFigure(fig, ::m, s, color, jointColor, glow)
+        drawFigure(fig, ::m, s, color)
     }
 }
 
-private fun DrawScope.drawFigure(
-    fig: Figure,
-    m: (Offset) -> Offset,
-    s: Float,
-    color: Color,
-    jointColor: Color,
-    glow: Boolean
-) {
+private fun DrawScope.drawFigure(fig: Figure, m: (Offset) -> Offset, s: Float, color: Color) {
     val bone = 2.6f * s
-    if (glow) {
-        for ((a, b) in fig.bones) drawLine(color.copy(alpha = 0.18f), m(a), m(b), strokeWidth = bone * 3f, cap = StrokeCap.Round)
-    }
     for ((a, b) in fig.bones) drawLine(color, m(a), m(b), strokeWidth = bone, cap = StrokeCap.Round)
     drawCircle(color, fig.headR * s, m(fig.head), style = androidx.compose.ui.graphics.drawscope.Stroke(bone))
-    for (j in fig.joints) {
-        drawCircle(color, 2.4f * s, m(j))
-        drawCircle(jointColor, 1.1f * s, m(j))
-    }
+    for (j in fig.joints) drawCircle(color, 2.1f * s, m(j))
 }
