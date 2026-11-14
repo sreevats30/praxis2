@@ -3,21 +3,14 @@ package com.companion.yogawellness.ui.wellness
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Call
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,9 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,14 +35,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.companion.yogawellness.data.db.QuestionnaireEntity
 import com.companion.yogawellness.ui.components.AppScreen
 import com.companion.yogawellness.ui.components.Hairline
+import com.companion.yogawellness.ui.components.Meter
 import com.companion.yogawellness.ui.components.Notice
-import com.companion.yogawellness.ui.components.Panel
 import com.companion.yogawellness.ui.components.PrimaryButton
-import com.companion.yogawellness.ui.components.ScreenColumn
+import com.companion.yogawellness.ui.components.RadioRow
 import com.companion.yogawellness.ui.components.SecondaryButton
-import com.companion.yogawellness.ui.components.SectionLabel
+import com.companion.yogawellness.ui.components.Section
 import com.companion.yogawellness.ui.theme.AppTheme
 import com.companion.yogawellness.ui.theme.NumericStyle
+import com.companion.yogawellness.ui.theme.Space
 import com.companion.yogawellness.wellness.CrisisLines
 import com.companion.yogawellness.wellness.QuestionnaireType
 import com.companion.yogawellness.wellness.Questionnaires
@@ -72,55 +66,39 @@ fun QuestionnaireScreen(type: QuestionnaireType, onDone: () -> Unit, vm: Wellnes
     val answered = answers.count { it != null }
     val c = AppTheme.colors
 
-    AppScreen(title = type.title, onBack = onDone) { padding ->
-        Column(Modifier.padding(padding)) {
-            if (saved == null) {
-                LinearProgressIndicator(
-                    progress = { answered / type.items.size.toFloat() },
-                    modifier = Modifier.fillMaxWidth().height(3.dp),
-                    color = c.accent,
-                    trackColor = c.sunken,
-                    drawStopIndicator = {}
-                )
-            }
-            ScreenColumn(PaddingValues(top = 12.dp), Modifier.weight(1f)) {
-                val result = saved
-                if (result != null) {
-                    QuestionnaireResult(type, result, history, Questionnaires.needsCrisisSupport(type, answers), onDone) { showCrisis = true }
-                } else {
-                    Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("$answered of ${type.items.size} answered", style = MaterialTheme.typography.labelLarge, color = c.textSecondary, modifier = Modifier.weight(1f))
-                        Text("Stored only on this phone", style = MaterialTheme.typography.labelMedium, color = c.textTertiary)
-                    }
-                    Notice(Questionnaires.NON_DIAGNOSTIC, Icons.Outlined.Info)
-                    Text(
-                        Questionnaires.STEM,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = c.text,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
-                    )
-                    type.items.forEachIndexed { i, item ->
-                        QuestionCard(i + 1, type.items.size, item, answers[i]) { value ->
-                            answers[i] = value
-                            if (Questionnaires.needsCrisisSupport(type, answers) && !crisisShownOnce) {
-                                showCrisis = true
-                                crisisShownOnce = true
-                            }
-                        }
-                    }
-                    PrimaryButton(
-                        "Save my answers",
-                        { vm.saveQuestionnaire(type, answers.toList()) { saved = it } },
-                        Modifier.fillMaxWidth().padding(top = 8.dp),
-                        enabled = Questionnaires.isComplete(type, answers)
-                    )
-                    Text(
-                        Questionnaires.ATTRIBUTION,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = c.textTertiary,
-                        modifier = Modifier.padding(horizontal = 4.dp)
-                    )
+    AppScreen(title = type.title, onBack = onDone, largeTitle = false) {
+        val result = saved
+        if (result != null) {
+            QuestionnaireResult(type, result, history, Questionnaires.needsCrisisSupport(type, answers), onDone) { showCrisis = true }
+        } else {
+            Column(Modifier.padding(start = Space.Gutter, end = Space.Gutter, top = Space.S), verticalArrangement = Arrangement.spacedBy(Space.S)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("$answered of ${type.items.size} answered", style = MaterialTheme.typography.labelLarge, color = c.textSecondary, modifier = Modifier.weight(1f))
+                    Text("Stored only on this phone", style = MaterialTheme.typography.labelMedium, color = c.textTertiary)
                 }
+                Meter(answered / type.items.size.toFloat(), c.accent, height = 3.dp)
+            }
+            Section(divider = false, spacing = Space.L) {
+                Notice(Questionnaires.NON_DIAGNOSTIC)
+                Text(Questionnaires.STEM, style = MaterialTheme.typography.headlineSmall, color = c.text)
+            }
+            type.items.forEachIndexed { i, item ->
+                Question(i + 1, type.items.size, item, answers[i]) { value ->
+                    answers[i] = value
+                    if (Questionnaires.needsCrisisSupport(type, answers) && !crisisShownOnce) {
+                        showCrisis = true
+                        crisisShownOnce = true
+                    }
+                }
+            }
+            Section(spacing = Space.M) {
+                PrimaryButton(
+                    "Save my answers",
+                    { vm.saveQuestionnaire(type, answers.toList()) { saved = it } },
+                    Modifier.fillMaxWidth(),
+                    enabled = Questionnaires.isComplete(type, answers)
+                )
+                Text(Questionnaires.ATTRIBUTION, style = MaterialTheme.typography.bodySmall, color = c.textTertiary)
             }
         }
     }
@@ -129,44 +107,25 @@ fun QuestionnaireScreen(type: QuestionnaireType, onDone: () -> Unit, vm: Wellnes
 }
 
 @Composable
-private fun QuestionCard(number: Int, total: Int, text: String, selected: Int?, onSelect: (Int) -> Unit) {
+private fun Question(number: Int, total: Int, text: String, selected: Int?, onSelect: (Int) -> Unit) {
     val c = AppTheme.colors
-    Panel(contentPadding = PaddingValues(0.dp), spacing = 0.dp) {
-        Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Section(gutter = false, spacing = 0.dp) {
+        Column(Modifier.padding(start = Space.Gutter, end = Space.Gutter, bottom = Space.S), verticalArrangement = Arrangement.spacedBy(Space.XS)) {
             Text("$number of $total", style = MaterialTheme.typography.labelMedium, color = c.textTertiary)
             Text(text, style = MaterialTheme.typography.bodyLarge, color = c.text)
         }
         Column(Modifier.selectableGroup()) {
             Questionnaires.OPTIONS.forEachIndexed { value, label ->
-                if (value > 0) Hairline(inset = 52.dp)
-                AnswerRow(label, value, selected == value) { onSelect(value) }
+                RadioRow(label, selected == value, { onSelect(value) }) {
+                    Text(
+                        "$value",
+                        style = NumericStyle.copy(fontSize = 13.sp, fontWeight = FontWeight.Normal),
+                        color = c.textTertiary,
+                        modifier = Modifier.semantics { contentDescription = "$value points" }
+                    )
+                }
             }
         }
-    }
-}
-
-@Composable
-private fun AnswerRow(label: String, points: Int, on: Boolean, onClick: () -> Unit) {
-    val c = AppTheme.colors
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .selectable(selected = on, role = Role.RadioButton, onClick = onClick)
-            .heightIn(min = 48.dp)
-            .padding(start = 4.dp, end = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        RadioButton(
-            selected = on, onClick = null, modifier = Modifier.padding(horizontal = 12.dp),
-            colors = RadioButtonDefaults.colors(selectedColor = c.accent, unselectedColor = c.borderStrong)
-        )
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = c.text, modifier = Modifier.weight(1f))
-        Text(
-            "$points",
-            style = MaterialTheme.typography.labelMedium,
-            color = c.textTertiary,
-            modifier = Modifier.semantics { contentDescription = "$points points" }
-        )
     }
 }
 
@@ -180,38 +139,38 @@ private fun QuestionnaireResult(
     onOpenSupport: () -> Unit
 ) {
     val c = AppTheme.colors
-    Panel(spacing = 14.dp) {
-        Text("Self-Reflection Check-In Score", style = MaterialTheme.typography.labelLarge, color = c.textSecondary)
+    Section(divider = false, spacing = Space.M) {
+        Text("Self-reflection score", style = MaterialTheme.typography.titleSmall, color = c.textSecondary)
         Row(verticalAlignment = Alignment.Bottom) {
-            Text("${result.totalScore}", style = NumericStyle.copy(fontSize = 44.sp), color = c.text)
-            Text(" / ${type.maxScore}", style = MaterialTheme.typography.titleMedium, color = c.textTertiary, modifier = Modifier.padding(bottom = 6.dp))
+            Text("${result.totalScore}", style = NumericStyle.copy(fontSize = 48.sp, lineHeight = 52.sp), color = c.text)
+            Text(" / ${type.maxScore}", style = MaterialTheme.typography.titleMedium, color = c.textTertiary, modifier = Modifier.padding(bottom = 8.dp))
         }
-        Hairline()
-        Text(Questionnaires.NON_DIAGNOSTIC, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+        Text(Questionnaires.NON_DIAGNOSTIC, style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
         Questionnaires.nextDueEpochDay(type, result.epochDay)?.let {
             Text("Next ${type.shortName} reflection: ${formatEpochDay(it)}", style = MaterialTheme.typography.bodyMedium, color = c.text)
         }
-    }
-    if (showSupport) {
-        SecondaryButton(
-            "Talk to someone — Tele-MANAS ${CrisisLines.TELE_MANAS_SHORT}", onOpenSupport, Modifier.fillMaxWidth(),
-            icon = Icons.Outlined.Call
-        )
+        if (showSupport) {
+            SecondaryButton(
+                "Talk to someone — Tele-MANAS ${CrisisLines.TELE_MANAS_SHORT}", onOpenSupport, Modifier.fillMaxWidth(),
+                icon = Icons.Outlined.Call
+            )
+        }
     }
     if (history.size > 1) {
-        SectionLabel("Your scores over time")
-        Panel(spacing = 12.dp) {
+        Section(title = "Your scores over time", spacing = Space.M) {
             HistoryBars(history, type.maxScore)
-            history.takeLast(6).reversed().forEachIndexed { i, q ->
-                if (i > 0) Hairline()
-                Row {
-                    Text(formatEpochDay(q.epochDay), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.weight(1f))
-                    Text("${q.totalScore} / ${type.maxScore}", style = MaterialTheme.typography.labelLarge, color = c.text)
+            Column {
+                history.takeLast(6).reversed().forEachIndexed { i, q ->
+                    if (i > 0) Hairline()
+                    Row(Modifier.padding(vertical = 10.dp)) {
+                        Text(formatEpochDay(q.epochDay), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary, modifier = Modifier.weight(1f))
+                        Text("${q.totalScore} / ${type.maxScore}", style = NumericStyle.copy(fontSize = 14.sp), color = c.text)
+                    }
                 }
             }
         }
     }
-    PrimaryButton("Done", onDone, Modifier.fillMaxWidth().padding(top = 8.dp))
+    Section { PrimaryButton("Done", onDone, Modifier.fillMaxWidth()) }
 }
 
 @Composable
@@ -231,9 +190,9 @@ private fun HistoryBars(history: List<QuestionnaireEntity>, max: Int) {
             items.forEachIndexed { i, q ->
                 val x = i * (bw + gap)
                 val r = CornerRadius(3.dp.toPx(), 3.dp.toPx())
-                drawRoundRect(c.sunken, Offset(x, 0f), Size(bw, size.height), r)
+                drawRoundRect(c.control, Offset(x, 0f), Size(bw, size.height), r)
                 val h = size.height * q.totalScore / max.toFloat()
-                if (h > 0f) drawRoundRect(if (i == n - 1) c.accent else c.borderStrong, Offset(x, size.height - h), Size(bw, h), r)
+                if (h > 0f) drawRoundRect(if (i == n - 1) c.text else c.lineStrong, Offset(x, size.height - h), Size(bw, h), r)
             }
         }
         Row(Modifier.fillMaxWidth()) {

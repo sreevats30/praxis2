@@ -1,19 +1,11 @@
 package com.companion.yogawellness.ui.wellness
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -23,26 +15,20 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.companion.yogawellness.ui.components.AppScreen
-import com.companion.yogawellness.ui.components.Hairline
-import com.companion.yogawellness.ui.components.Panel
+import com.companion.yogawellness.ui.components.Notice
 import com.companion.yogawellness.ui.components.PrimaryButton
-import com.companion.yogawellness.ui.components.ScreenColumn
-import com.companion.yogawellness.ui.components.SectionLabel
-import com.companion.yogawellness.ui.components.Tag
+import com.companion.yogawellness.ui.components.ScaleSelector
+import com.companion.yogawellness.ui.components.Section
 import com.companion.yogawellness.ui.components.Tone
 import com.companion.yogawellness.ui.theme.AppTheme
 import com.companion.yogawellness.ui.theme.NumericStyle
-import kotlin.math.roundToInt
+import com.companion.yogawellness.ui.theme.Space
 
 /** Daily check-in, under 30 seconds (§9.2): mood, stress, sleep + optional pre/post tension. */
 @Composable
@@ -65,60 +51,52 @@ fun CheckInScreen(onDone: () -> Unit, vm: WellnessViewModel = viewModel()) {
         }
     }
 
-    AppScreen(title = "Daily check-in", onBack = onDone) { padding ->
-        ScreenColumn(padding) {
+    AppScreen(
+        title = "Daily check-in",
+        onBack = onDone,
+        largeTitle = true,
+        headline = "How are you today?",
+        subtitle = "${formatEpochDay(vm.todayEpochDay)} · rate each from 1 to 10. There are no right answers."
+    ) {
+        Section(divider = false, spacing = Space.XL) {
+            ScaleRow("Mood", mood, "Low", "Great", c.mood, ::moodWord) { mood = it }
+            ScaleRow("Stress", stress, "Calm", "Very stressed", c.stress, ::stressWord) { stress = it }
+            ScaleRow("Sleep quality", sleep, "Poor", "Excellent", c.sleep, ::sleepWord) { sleep = it }
+        }
+
+        Section(title = "Body tension", spacing = Space.L) {
             Text(
-                "${formatEpochDay(vm.todayEpochDay)} · rate each from 1 to 10. There are no right answers.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = c.textSecondary,
-                modifier = Modifier.padding(horizontal = 4.dp)
+                "Optional. Rate how tense your body feels before and after practice; tap a number again to clear it.",
+                style = MaterialTheme.typography.bodySmall,
+                color = c.textTertiary
             )
-            Panel(contentPadding = PaddingValues(0.dp), spacing = 0.dp) {
-                ScaleRow("Mood", mood, "Low", "Great", ::moodWord) { mood = it }
-                Hairline()
-                ScaleRow("Stress", stress, "Calm", "Very stressed", ::stressWord) { stress = it }
-                Hairline()
-                ScaleRow("Sleep quality", sleep, "Poor", "Excellent", ::sleepWord) { sleep = it }
+            TensionPicker("Before practice", pre) { pre = it }
+            TensionPicker("After practice", post) { post = it }
+            val p = pre
+            val q = post
+            if (p != null && q != null) {
+                val d = q - p
+                Notice(
+                    "Self-rated tension went from $p to $q after today's practice.",
+                    tone = if (d < 0) Tone.POSITIVE else if (d > 0) Tone.WARNING else Tone.NEUTRAL,
+                    title = if (d == 0) "No change" else "${if (d > 0) "+" else "−"}${kotlin.math.abs(d)} after practice"
+                )
             }
+        }
 
-            SectionLabel("Body tension (optional)")
-            Panel(spacing = 16.dp) {
-                TensionPicker("Before practice", pre) { pre = it }
-                TensionPicker("After practice", post) { post = it }
-                val p = pre
-                val q = post
-                if (p != null && q != null) {
-                    Hairline()
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(
-                            "Self-rated tension went from $p to $q after today's practice.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = c.text,
-                            modifier = Modifier.weight(1f)
-                        )
-                        val d = q - p
-                        Tag(if (d > 0) "+$d" else "$d", tone = if (d < 0) Tone.POSITIVE else if (d > 0) Tone.WARNING else Tone.NEUTRAL)
-                    }
-                }
-            }
-
-            val m = mood
-            val st = stress
-            val sl = sleep
-            val complete = m != null && st != null && sl != null
+        val m = mood
+        val st = stress
+        val sl = sleep
+        val complete = m != null && st != null && sl != null
+        Section(spacing = Space.S) {
             PrimaryButton(
                 if (existing != null) "Update today's check-in" else "Save check-in",
                 { if (m != null && st != null && sl != null) vm.saveCheckIn(m, st, sl, pre, post, onDone) },
-                Modifier.fillMaxWidth().padding(top = 8.dp),
+                Modifier.fillMaxWidth(),
                 enabled = complete
             )
             if (!complete) {
-                Text(
-                    "Rate mood, stress and sleep to save.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = c.textTertiary,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
+                Text("Rate mood, stress and sleep to save.", style = MaterialTheme.typography.bodySmall, color = c.textTertiary)
             }
         }
     }
@@ -129,37 +107,23 @@ private fun stressWord(v: Int) = when (v) { in 1..2 -> "Calm"; in 3..4 -> "Mild"
 private fun sleepWord(v: Int) = when (v) { in 1..2 -> "Very poor"; in 3..4 -> "Poor"; in 5..6 -> "Fair"; in 7..8 -> "Good"; else -> "Excellent" }
 
 @Composable
-private fun ScaleRow(label: String, value: Int?, low: String, high: String, word: (Int) -> String, onChange: (Int) -> Unit) {
+private fun ScaleRow(label: String, value: Int?, low: String, high: String, color: Color, word: (Int) -> String, onChange: (Int) -> Unit) {
     val c = AppTheme.colors
-    Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(label, style = MaterialTheme.typography.titleMedium, color = c.text)
-                Text(value?.let(word) ?: "Not rated yet", style = MaterialTheme.typography.bodySmall, color = c.textTertiary)
+                Text(value?.let(word) ?: "Not rated yet", style = MaterialTheme.typography.bodySmall, color = if (value != null) c.textSecondary else c.textTertiary)
             }
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(value?.toString() ?: "–", style = NumericStyle.copy(fontSize = 26.sp), color = if (value != null) c.text else c.textTertiary)
-                Text(" /10", style = MaterialTheme.typography.labelLarge, color = c.textTertiary, modifier = Modifier.padding(bottom = 3.dp))
+                Text(" /10", style = MaterialTheme.typography.bodySmall, color = c.textTertiary, modifier = Modifier.padding(bottom = 4.dp))
             }
         }
-        // Unrated: an empty track with no thumb; tapping or dragging anywhere sets the value.
-        Slider(
-            value = value?.toFloat() ?: 1f,
-            onValueChange = { onChange(it.roundToInt()) },
-            valueRange = 1f..10f,
-            steps = 8,
-            colors = SliderDefaults.colors(
-                thumbColor = if (value != null) c.accent else Color.Transparent,
-                activeTrackColor = if (value != null) c.accent else c.sunken,
-                inactiveTrackColor = c.sunken,
-                activeTickColor = if (value != null) c.onAccent.copy(alpha = 0.7f) else c.borderStrong,
-                inactiveTickColor = c.borderStrong
-            ),
-            modifier = if (value == null) Modifier.semantics { stateDescription = "$label not rated yet" } else Modifier
-        )
+        ScaleSelector(value, { v -> v?.let(onChange) }, color, label)
         Row {
-            Text(low, style = MaterialTheme.typography.labelMedium, color = c.textTertiary, modifier = Modifier.weight(1f))
-            Text(high, style = MaterialTheme.typography.labelMedium, color = c.textTertiary)
+            Text(low, style = MaterialTheme.typography.labelSmall, color = c.textTertiary, modifier = Modifier.weight(1f))
+            Text(high, style = MaterialTheme.typography.labelSmall, color = c.textTertiary)
         }
     }
 }
@@ -167,26 +131,11 @@ private fun ScaleRow(label: String, value: Int?, low: String, high: String, word
 @Composable
 private fun TensionPicker(label: String, value: Int?, onChange: (Int?) -> Unit) {
     val c = AppTheme.colors
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Space.S)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(label, style = MaterialTheme.typography.titleSmall, color = c.text, modifier = Modifier.weight(1f))
             Text(value?.let { "$it /10" } ?: "Not rated", style = MaterialTheme.typography.labelMedium, color = c.textTertiary)
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            (1..10).forEach { n ->
-                val on = value == n
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .aspectRatio(0.9f)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (on) c.accent else c.sunken)
-                        .selectable(selected = on, role = Role.RadioButton) { onChange(if (on) null else n) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("$n", style = MaterialTheme.typography.labelLarge, color = if (on) c.onAccent else c.textSecondary)
-                }
-            }
-        }
+        ScaleSelector(value, onChange, c.inverse, label, rangeSemantics = false, clearable = true, ramp = false)
     }
 }

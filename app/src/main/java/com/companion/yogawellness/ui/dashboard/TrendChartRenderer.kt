@@ -29,10 +29,11 @@ data class ChartColors(
             muted = 0xFF6B7380.toInt(), grid = 0xFFEDEFF2.toInt(), axis = 0xFFC9CED6.toInt(),
             quality = 0xFF2A6FD6.toInt(), stress = 0xFFE0612D.toInt(), mood = 0xFF14946B.toInt()
         )
+        /** On the app's page colour (the dashboard draws charts directly on the page, not in a card). */
         val Dark = ChartColors(
-            surface = 0xFF171A1F.toInt(), inkPrimary = 0xFFF1F3F5.toInt(), inkSecondary = 0xFFB4BAC4.toInt(),
-            muted = 0xFF8B929D.toInt(), grid = 0xFF23282F.toInt(), axis = 0xFF3B424C.toInt(),
-            quality = 0xFF5B95EC.toInt(), stress = 0xFFF07A45.toInt(), mood = 0xFF34C08E.toInt()
+            surface = 0xFF0E0E0D.toInt(), inkPrimary = 0xFFEEECE7.toInt(), inkSecondary = 0xFFABA9A2.toInt(),
+            muted = 0xFF807E78.toInt(), grid = 0xFF222220.toInt(), axis = 0xFF3B3A37.toInt(),
+            quality = 0xFFD4B77F.toInt(), stress = 0xFFE38B60.toInt(), mood = 0xFF6DBE98.toInt()
         )
     }
 }
@@ -69,7 +70,7 @@ class TrendChartRenderer(
     private val titleText = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = c.inkSecondary; textSize = 12 * sp }
     private val endText = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = c.inkPrimary; textSize = 12 * sp; isFakeBoldText = true }
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE; strokeWidth = 2 * dp; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
+        style = Paint.Style.STROKE; strokeWidth = 1.75f * dp; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
     }
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val selPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = c.inkSecondary; strokeWidth = max(1f, dp); alpha = 140 }
@@ -182,9 +183,9 @@ class TrendChartRenderer(
         for (s in series) {
             s.values.forEachIndexed { i, v ->
                 if (v == null) return@forEachIndexed
-                val r = if (i == selected) 5.5f * dp else 4f * dp
+                val r = if (i == selected) 4.5f * dp else 3f * dp
                 fill.color = c.surface
-                canvas.drawCircle(x(i), y(v), r + 2 * dp, fill)
+                canvas.drawCircle(x(i), y(v), r + 1.5f * dp, fill)
                 fill.color = s.color
                 canvas.drawCircle(x(i), y(v), r, fill)
             }

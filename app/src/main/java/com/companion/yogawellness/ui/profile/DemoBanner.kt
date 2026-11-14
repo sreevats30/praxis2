@@ -1,12 +1,7 @@
 package com.companion.yogawellness.ui.profile
 
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.height
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Science
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -16,8 +11,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.companion.yogawellness.YogaWellnessApp
 import com.companion.yogawellness.data.ProfileIds
 import com.companion.yogawellness.ui.components.Notice
+import com.companion.yogawellness.ui.components.TextAction
 import com.companion.yogawellness.ui.components.Tone
 import com.companion.yogawellness.ui.theme.AppTheme
+import com.companion.yogawellness.ui.theme.Space
 
 fun demoBannerText(profileId: String) =
     "Viewing demo data (${ProfileIds.displayName(profileId)}). Your own data is safe."
@@ -28,14 +25,10 @@ fun DemoBanner(profileId: String, onBackToMyAccount: () -> Unit, modifier: Modif
     if (!ProfileIds.isDemo(profileId)) return
     Notice(
         demoBannerText(profileId),
-        Icons.Outlined.Science,
-        modifier,
+        modifier.padding(vertical = Space.S),
         tone = Tone.WARNING,
-        action = {
-            TextButton(onClick = onBackToMyAccount, contentPadding = PaddingValues(0.dp), modifier = Modifier.height(32.dp)) {
-                Text("Back to My Account", style = MaterialTheme.typography.labelLarge, color = AppTheme.colors.text)
-            }
-        }
+        title = "Demo data",
+        action = { TextAction("Back to My Account", onBackToMyAccount, Modifier.offset(x = (-8).dp), color = AppTheme.colors.text) }
     )
 }
 

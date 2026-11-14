@@ -7,7 +7,6 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.companion.yogawellness.data.SessionAutoRecorder
 import com.companion.yogawellness.data.SessionReceipt
 import com.companion.yogawellness.ui.theme.AppTheme
+import com.companion.yogawellness.ui.theme.ScoreColors
 import java.util.Locale
 
 /** "Remove animations" accessibility setting. */
@@ -69,9 +69,8 @@ fun RecBadge(rec: SessionAutoRecorder.Rec, modifier: Modifier = Modifier, compac
         ).value
     }
     Surface(
-        color = Color(0xB8000000),
+        color = Color.White.copy(alpha = 0.06f),
         shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
         modifier = modifier.clearAndSetSemantics { contentDescription = recContentDescription(rec) }
     ) {
         Row(
@@ -83,12 +82,12 @@ fun RecBadge(rec: SessionAutoRecorder.Rec, modifier: Modifier = Modifier, compac
                 Modifier
                     .size(9.dp)
                     .alpha(dotAlpha)
-                    .background(Color(0xFFE5484D), CircleShape)
+                    .background(ScoreColors.Red, CircleShape)
             )
             Text(
                 if (compact) recBadgeText(rec).removeSuffix(" saved") else recBadgeText(rec),
-                color = Color.White,
-                style = MaterialTheme.typography.labelMedium,
+                color = Color(0xFFEEECE7),
+                style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1
             )
@@ -110,12 +109,12 @@ fun SessionReceiptDialog(receipt: SessionReceipt, onViewHistory: () -> Unit, onK
         title = { Text("Session saved") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                receipt.poses.forEach { Text(receiptLine(it), style = MaterialTheme.typography.bodyMedium, color = c.text) }
-                HorizontalDivider(color = c.border)
+                receipt.poses.forEach { Text(receiptLine(it), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary) }
+                HorizontalDivider(color = c.line)
                 Text(
                     String.format(Locale.US, "Total %.1f s", receipt.totalSec) +
                         (receipt.meanScore?.let { " · mean alignment ${it.toInt()}%" } ?: ""),
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.titleSmall.copy(fontFeatureSettings = "tnum"),
                     color = c.text
                 )
             }

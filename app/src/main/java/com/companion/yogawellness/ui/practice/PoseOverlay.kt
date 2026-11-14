@@ -110,7 +110,7 @@ fun PoseOverlay(output: PipelineOutput?, mirror: Boolean, modifier: Modifier = M
             if (lm.visibility < 0.4f) continue
             val p = tf.map(lm)
             val c = jointColor[i]?.let { scoreColor(it) } ?: ScoreColors.Neutral
-            drawCircle(Color.White, radius = 5.5.dp.toPx(), center = p)
+            drawCircle(BoneCore, radius = 5.5.dp.toPx(), center = p)
             drawCircle(c, radius = 4.dp.toPx(), center = p)
         }
 
@@ -143,12 +143,12 @@ private fun vertexIndices(g: JointGeometry, frontSide: com.companion.yogawellnes
 }
 
 private val BoneShadow = Color(0x59000000)
-private val BoneCore = Color(0xF2FFFFFF)
+private val BoneCore = Color(0xF2EEECE7)
 
 private fun DrawScope.drawAngleTag(tm: TextMeasurer, at: Offset, text: String, color: Color) {
     val layout = tm.measure(
         text,
-        TextStyle(color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, fontFamily = Inter)
+        TextStyle(color = Color(0xFFEEECE7), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, fontFamily = Inter, fontFeatureSettings = "tnum")
     )
     val padX = 8.dp.toPx()
     val padY = 3.dp.toPx()
@@ -156,7 +156,7 @@ private fun DrawScope.drawAngleTag(tm: TextMeasurer, at: Offset, text: String, c
     val size = androidx.compose.ui.geometry.Size(layout.size.width + 2 * padX, layout.size.height + 2 * padY)
     // Leader line from the joint to the tag
     drawLine(Color.White.copy(alpha = 0.7f), at, topLeft + Offset(0f, size.height), strokeWidth = 1.dp.toPx(), cap = StrokeCap.Round)
-    drawRoundRect(color = Color(0xD9000000), topLeft = topLeft, size = size, cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx(), 4.dp.toPx()))
+    drawRoundRect(color = Color(0xD90E0E0D), topLeft = topLeft, size = size, cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx(), 4.dp.toPx()))
     drawRect(color = color, topLeft = topLeft, size = androidx.compose.ui.geometry.Size(3.dp.toPx(), size.height))
     drawText(layout, topLeft = topLeft + Offset(padX, padY))
 }

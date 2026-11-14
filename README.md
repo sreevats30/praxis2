@@ -159,32 +159,43 @@ Joint targets/tolerances live in `scoring/AsanaSpecs.kt`; classifier rules in
 | Session auto-recording | `data/SessionAutoRecorder.kt`, `wellness/DailyAggregator.kt` (`SessionSummarizer`) |
 | History | `ui/history/`, `wellness/HistoryAggregator.kt` |
 | Learn / Asana Codex | `codex/` (rig, solver, timeline, 32-pose catalog), `ui/codex/` |
-| Design system (colours, type, shapes) | `ui/theme/Theme.kt`, `ui/theme/Type.kt` |
+| Design system (colours, type, spacing, radii) | `ui/theme/Theme.kt`, `ui/theme/Type.kt` |
 | Shared UI components + artwork | `ui/components/Kit.kt`, `ui/components/Artwork.kt` |
 | Home summary (streak, week, sparklines) | `wellness/ActivitySummary.kt`, `ui/home/` |
 
 ## Design system
 
-The UI follows a deliberately restrained, utilitarian style — the look of a well-made health tool rather than a
-marketing page. The rules, so new screens stay consistent:
+**Direction — "practice room".** A dark, warm-neutral interface. The app is used with the phone propped up
+across a room, often in low light, and the camera screen is dark by nature, so every screen shares one dark
+identity (the app is dark-only). The look comes from typography, spacing and restraint rather than decoration.
 
-- **Surfaces**: a neutral grey page (`background`) with flat white panels (`surface`) separated by 1 dp hairlines
-  (`border`). No shadows, gradients, glows or decorative shapes. Dark theme mirrors the same tokens.
-- **Colour**: one accent (teal `#0B6E6A`, `#4CB8B1` in dark) for primary actions, selection and progress. Everything
-  else is grey text in three steps (`text`, `textSecondary`, `textTertiary`). Colour carries meaning only:
-  score bands (green / amber / red), and mood / stress / sleep series in charts. Tokens live in `AppTheme.colors`.
-- **Type**: Inter only, bundled in `res/font/` (the app has no internet permission, so no downloadable fonts); its
-  SIL OFL licence ships in `assets/licenses/`. Numbers that change use `NumericStyle` (tabular figures). Section
-  labels are sentence case — no all-caps or letter-spaced labels.
-- **Layout**: large collapsing titles on the four tab screens, small titles on pushed screens; content is grouped into
-  labelled sections of panels and list rows, with supporting text below a group rather than inside every row.
-- **Components** (`ui/components/Kit.kt`): `AppScreen`, `ScreenColumn`, `SectionLabel`, `Panel`, `PanelHeader`,
-  `ListRow`, `Hairline`, `PrimaryButton`, `SecondaryButton`, `Segmented`, `Tag`, `Notice`, `Stat`, `Meter`, `Ring`;
-  artwork in `Artwork.kt` is limited to `BrandMark` and `PoseGlyph` (line figure for each asana).
-- **Camera HUD**: the one dark surface — translucent black panels over the preview, white text, the same accent and
-  score colours.
+- **Colour** (`ui/theme/Theme.kt`, `AppTheme.colors`):
+  - *Neutrals* are warm ink, not slate: `canvas` (page), `raised` (sheets, dialogs), `control` (inputs, selector
+    tracks, media tiles), `line` / `lineStrong` (hairlines, outlines) and three text steps.
+  - *Ivory* (`inverse`) is the action colour: primary buttons and the selected option of a selector.
+  - *Jade* (`accent`) means "on target": active tab, progress, aligned joints, positive results.
+  - *Amber* and *coral* are reserved for caution and problems; score bands use jade / amber / coral.
+  - *Data series* (mood, stress, sleep, practice quality) have their own hues and appear only in charts and meters.
+- **Type** (`ui/theme/Type.kt`, both SIL OFL and bundled — the app has no internet permission):
+  - *Newsreader* (serif) for what you read as language: screen titles, the greeting, pose names, the findings
+    on Insights. Sanskrit names use its italic (`SanskritStyle`).
+  - *Inter* for everything you operate or measure: labels, controls, lists, and numbers — always with tabular
+    figures (`NumericStyle`). Section headings are small, semibold and sentence case (`SectionStyle`).
+- **Space and shape**: a 4-point scale with a 20 dp page gutter (`Space`); radii are 4 dp for small marks, 8 dp
+  for anything you press or type into, 12 dp for media and sheets (`Radius`). Selectors use concentric radii.
+- **Structure**: content is grouped into `Section`s separated by full-width hairlines and spacing — not cards.
+  Raised fills are kept for controls, media tiles, sheets and dialogs. Lists run edge to edge (`ListRow`).
+- **Screens** (`ui/components/Kit.kt`): `AppScreen` / `AppLazyScreen` give every screen the same slim bar; top-level
+  screens open with a large serif title that hands over to the bar's small title on scroll.
+- **Components**: `PrimaryButton` (ivory), `SecondaryButton` (outline), `TextAction`, `IconAction`, `Segmented`,
+  `Chip`, `ScaleSelector` (1–10 rating), `SearchField`, `CheckRow`, `RadioRow`, `AppSwitch`, `Stat`, `Meter`,
+  `SegmentMeter`, `Ring`, `Tag`, `StatusLabel`, `Notice` (a margin rule, not a box), `EmptyState`, `LoadingState`;
+  artwork in `Artwork.kt` is the `PoseGlyph` line figure.
+- **Navigation**: a hairline-topped bottom bar; the active tab has a filled icon, full-strength label and a short
+  jade bar on the top edge — never colour alone, no pill.
+- **Camera HUD**: translucent ink panels over the preview with the same ivory text, jade and score colours.
 - **Screenshots**: `./gradlew :app:testDebugUnitTest --tests '*ScreenRenderTest*'` renders every screen (including
-  full-length, demo-data and dark-mode variants) to `app/build/screenshots/`.
+  full-length, narrow-phone, demo-data and 2× font variants) to `app/build/screenshots/`.
 
 ## Deliberate deviations from the blueprint
 
